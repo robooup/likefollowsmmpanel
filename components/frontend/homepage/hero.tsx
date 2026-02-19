@@ -114,17 +114,19 @@ const Hero: React.FC = () => {
           return;
         }
 
-        const { totalUsers, completedOrders, activeUsers, totalOrders } = json?.data || {};
+        const { totalUsers, completedOrders, activeUsers, totalOrders, activeAffiliateUsers } = json?.data || {};
 
         const finalUsersCount = typeof totalUsers === 'number' ? totalUsers : (totalUsers === null || totalUsers === undefined ? 0 : Number(totalUsers) || 0);
         const finalCompletedOrders = typeof completedOrders === 'number' ? completedOrders : (completedOrders === null || completedOrders === undefined ? 0 : Number(completedOrders) || 0);
         const finalTotalOrders = typeof totalOrders === 'number' ? totalOrders : (totalOrders === null || totalOrders === undefined ? 0 : Number(totalOrders) || 0);
         const finalActiveUsers = typeof activeUsers === 'number' ? activeUsers : (activeUsers === null || activeUsers === undefined ? 0 : Number(activeUsers) || 0);
+        const finalActiveAffiliateUsers = typeof activeAffiliateUsers === 'number' ? activeAffiliateUsers : (activeAffiliateUsers === null || activeAffiliateUsers === undefined ? 0 : Number(activeAffiliateUsers) || 0);
 
         const data = {
           completedOrders: finalCompletedOrders,
           activeServices: typeof json?.data?.activeServices === 'number' ? json.data.activeServices : 0,
           activeUsers: finalActiveUsers,
+          activeAffiliateUsers: finalActiveAffiliateUsers,
           totalUsers: finalUsersCount,
           totalOrders: finalTotalOrders,
         };
