@@ -2,6 +2,7 @@ export interface HomepageStatsData {
   completedOrders: number;
   activeServices: number;
   activeUsers: number;
+  activeAffiliateUsers: number;
   totalUsers: number;
   totalOrders: number;
 }
@@ -20,6 +21,7 @@ function isStatsData(value: unknown): value is { data: HomepageStatsData; expire
     typeof data.completedOrders === 'number' &&
     typeof data.activeServices === 'number' &&
     typeof data.activeUsers === 'number' &&
+    typeof data.activeAffiliateUsers === 'number' &&
     typeof data.totalUsers === 'number' &&
     typeof data.totalOrders === 'number'
   );

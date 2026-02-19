@@ -16,7 +16,7 @@ const counterData: CounterItem[] = [
   { iconName: 'FaShoppingCart', title: 'Order Completed', count: '0' },
   { iconName: 'FaServer', title: 'Active Services', count: '0' },
   { iconName: 'FaUsers', title: 'Active Users', count: '0' },
-  { iconName: 'FaShareAlt', title: 'Affiliate Users', count: '100+' },
+  { iconName: 'FaShareAlt', title: 'Affiliate Users', count: '0' },
 ];
 
 const iconMap = {
@@ -31,6 +31,7 @@ export default function Statistics() {
     completedOrders: number;
     activeServices: number;
     activeUsers: number;
+    activeAffiliateUsers: number;
     totalOrders: number;
     totalUsers: number;
   } | null>(null);
@@ -85,6 +86,9 @@ export default function Statistics() {
         countValue = value.toString();
       } else if (item.title === 'Active Users') {
         const value = typeof counts.activeUsers === 'number' ? counts.activeUsers : 0;
+        countValue = value.toString();
+      } else if (item.title === 'Affiliate Users') {
+        const value = typeof counts.activeAffiliateUsers === 'number' ? counts.activeAffiliateUsers : 0;
         countValue = value.toString();
       }
     }

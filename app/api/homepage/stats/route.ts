@@ -15,6 +15,7 @@ export async function GET() {
           completedOrders: 0,
           activeServices: 0,
           activeUsers: 0,
+          activeAffiliateUsers: 0,
           totalUsers: 0,
           totalOrders: 0,
         },

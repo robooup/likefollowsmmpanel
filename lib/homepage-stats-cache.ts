@@ -5,12 +5,13 @@ export interface HomepageStats {
   completedOrders: number;
   activeServices: number;
   activeUsers: number;
+  activeAffiliateUsers: number;
   totalUsers: number;
   totalOrders: number;
 }
 
 async function computeStatsFromDb(): Promise<HomepageStats> {
-  const [completedOrders, activeServices, activeUsers, totalUsers, totalOrders] = await Promise.all([
+  const [completedOrders, activeServices, activeUsers, activeAffiliateUsers, totalUsers, totalOrders] = await Promise.all([
     db.newOrders.count({ where: { status: 'completed' } }).catch((err) => {
       logger.error('Error counting completed orders', err);
       return 0;
@@ -21,6 +22,10 @@ async function computeStatsFromDb(): Promise<HomepageStats> {
     }),
     db.users.count({ where: { role: 'user', status: 'active' } }).catch((err) => {
       logger.error('Error counting active users', err);
+      return 0;
+    }),
+    db.affiliates.count({ where: { status: 'active' } }).catch((err) => {
+      logger.error('Error counting active affiliate users', err);
       return 0;
     }),
     db.users.count().catch((err) => {
@@ -37,6 +42,7 @@ async function computeStatsFromDb(): Promise<HomepageStats> {
     completedOrders: completedOrders ?? 0,
     activeServices: activeServices ?? 0,
     activeUsers: activeUsers ?? 0,
+    activeAffiliateUsers: activeAffiliateUsers ?? 0,
     totalUsers: totalUsers ?? 0,
     totalOrders: totalOrders ?? 0,
   };
