@@ -51,13 +51,13 @@ export async function GET(request: Request) {
                 {
                   name: {
                     contains: search.trim(),
-                    mode: 'insensitive',
+                    mode: 'insensitive' as const,
                   },
                 },
                 {
                   description: {
                     contains: search.trim(),
-                    mode: 'insensitive',
+                    mode: 'insensitive' as const,
                   },
                 },
                 ...(isNaN(Number(search.trim())) ? [] : [{
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
                   category: {
                     category_name: {
                       contains: search.trim(),
-                      mode: 'insensitive',
+                      mode: 'insensitive' as const,
                     },
                   },
                 },
@@ -156,13 +156,13 @@ export async function GET(request: Request) {
               {
                 name: {
                   contains: search.trim(),
-                  mode: 'insensitive',
+                  mode: 'insensitive' as const,
                 },
               },
               {
                 description: {
                   contains: search.trim(),
-                  mode: 'insensitive',
+                  mode: 'insensitive' as const,
                 },
               },
               ...(isNaN(Number(search.trim())) ? [] : [{
@@ -179,14 +179,14 @@ export async function GET(request: Request) {
                 category: {
                   category_name: {
                     contains: search.trim(),
-                    mode: 'insensitive',
+                    mode: 'insensitive' as const,
                   },
                 },
               },
               {
                 provider: {
                   contains: search.trim(),
-                  mode: 'insensitive',
+                  mode: 'insensitive' as const,
                 },
               },
             ],
