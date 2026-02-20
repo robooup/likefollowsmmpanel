@@ -28,7 +28,9 @@ export async function GET(request: Request) {
     const filter = searchParams.get('filter') || 'all';
     const serviceTypeFilter = searchParams.get('serviceType') || '';
     const packageTypeFilter = searchParams.get('packageType') || '';
-    const limit = parseInt(limitParam);
+    const rawLimit = parseInt(limitParam);
+    const MAX_SERVICES_LIMIT = 2000;
+    const limit = Math.min(isNaN(rawLimit) ? 10 : rawLimit, MAX_SERVICES_LIMIT);
 
     let deletedAtFilter;
     if (filter === 'trash') {
@@ -83,7 +85,7 @@ export async function GET(request: Request) {
           : {})
       };
 
-      console.log('Fetching all services (limit >= 500) with whereClause:', JSON.stringify(whereClause, null, 2));
+      console.log('Fetching services (limit >= 500, capped at', MAX_SERVICES_LIMIT, ') with whereClause:', JSON.stringify(whereClause, null, 2));
       
       const services = await db.services.findMany({
         where: whereClause,
@@ -93,6 +95,7 @@ export async function GET(request: Request) {
         include: {
           category: true,
         },
+        take: limit,
       });
 
       console.log(`Found ${services.length} services (limit >= 500)`);
@@ -196,6 +199,7 @@ export async function GET(request: Request) {
 
     console.log('Fetching services with whereClause:', JSON.stringify(whereClause, null, 2));
     
+    const servicesTake = Math.min(limit * 50, MAX_SERVICES_LIMIT);
     const services = await db.services.findMany({
       where: whereClause,
       orderBy: {
@@ -204,6 +208,7 @@ export async function GET(request: Request) {
       include: {
         category: true,
       },
+      take: servicesTake,
     });
 
     console.log(`Found ${services.length} services`);

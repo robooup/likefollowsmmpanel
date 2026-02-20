@@ -1,4 +1,4 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { validateOrderByType, getServiceTypeConfig } from '@/lib/service-types';
@@ -24,7 +24,8 @@ export async function GET(req: NextRequest) {
     
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const rawLimit = parseInt(searchParams.get('limit') || '20');
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const userId = searchParams.get('userId');

@@ -68,7 +68,7 @@ export async function getPaymentGatewayCheckoutUrl(): Promise<string> {
   const baseUrl = config.apiUrl.trim();
 
   if (!baseUrl) {
-    return 'https://pay.smmdoc.com/api/checkout-v2';
+    return 'https://pay.likefollowsmmpanel.com/api/checkout-v2';
   }
 
   const cleanUrl = baseUrl.replace(/\/$/, '');
@@ -85,7 +85,7 @@ export async function getPaymentGatewayVerifyUrl(): Promise<string> {
   const baseUrl = config.apiUrl.trim();
 
   if (!baseUrl) {
-    return 'https://pay.smmdoc.com/api/verify-payment';
+    return 'https://pay.likefollowsmmpanel.com/api/verify-payment';
   }
 
   const cleanUrl = baseUrl.replace(/\/$/, '');

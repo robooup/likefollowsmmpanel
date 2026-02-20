@@ -46,18 +46,18 @@ export async function GET() {
 
     const totalCategories = await db.categories.count();
 
-    const orders = await db.newOrders.findMany({
+    const revenueResult = await db.newOrders.aggregate({
       where: {
         status: {
           in: ['completed', 'processing']
         }
       },
-      select: {
+      _sum: {
         usdPrice: true
       }
     });
 
-    const totalRevenue = orders.reduce((acc, order) => acc + order.usdPrice, 0);
+    const totalRevenue = Number(revenueResult._sum.usdPrice ?? 0);
 
     const recentOrders = await db.newOrders.findMany({
       take: 5,
@@ -113,7 +113,7 @@ export async function GET() {
       }
     });
 
-    const todaysOrdersWithProfit = await db.newOrders.findMany({
+    const todaysProfitResult = await db.newOrders.aggregate({
       where: {
         createdAt: {
           gte: todayStart,
@@ -123,12 +123,12 @@ export async function GET() {
           in: ['completed', 'processing']
         }
       },
-      select: {
+      _sum: {
         profit: true
       }
     });
 
-    const todaysProfit = todaysOrdersWithProfit.reduce((acc, order) => acc + (order.profit || 0), 0);
+    const todaysProfit = Number(todaysProfitResult._sum.profit ?? 0);
 
     const newUsersToday = await db.users.count({
       where: {
@@ -183,7 +183,7 @@ export async function GET() {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-    const last30DaysOrders = await db.newOrders.findMany({
+    const last30DaysRevenueResult = await db.newOrders.aggregate({
       where: {
         createdAt: {
           gte: thirtyDaysAgo
@@ -192,12 +192,12 @@ export async function GET() {
           in: ['completed', 'processing']
         }
       },
-      select: {
+      _sum: {
         usdPrice: true
       }
     });
 
-    const last30DaysRevenue = last30DaysOrders.reduce((acc, order) => acc + order.usdPrice, 0);
+    const last30DaysRevenue = Number(last30DaysRevenueResult._sum.usdPrice ?? 0);
 
     const responseData = {
       success: true,

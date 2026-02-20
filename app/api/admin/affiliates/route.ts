@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
           ],
         },
         select: { id: true },
+        take: 500,
       })
       userIdsFilter = matchedUsers.map(u => u.id)
       whereAffiliates.OR = [

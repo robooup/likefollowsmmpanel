@@ -167,7 +167,7 @@ export default function LiveChatWidget() {
   };
 
   const handleMessenger = () => {
-    const messengerUrl = liveChatSettings.messengerUrl || 'https://m.me/smmdocbd';
+    const messengerUrl = liveChatSettings.messengerUrl || 'https://m.me/likefollowsmmpanelbd';
     window.open(messengerUrl, '_blank');
   };
 

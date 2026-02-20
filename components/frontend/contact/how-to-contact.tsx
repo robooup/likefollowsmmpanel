@@ -448,7 +448,7 @@ const HowToContact: React.FC = () => {
             <div className="text-left">
               <p className="text-gray-600 dark:text-gray-300 text-lg mb-6 transition-colors duration-200">
                 We value every interaction and are dedicated to providing you
-                with the information and support you need. At SMMDOC, your
+                with the information and support you need. At Like Follow SMM Panel, your
                 digital marketing success is our priority, and we look forward
                 to playing a part in your journey to social media excellence.
               </p>

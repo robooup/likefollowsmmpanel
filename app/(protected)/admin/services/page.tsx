@@ -353,9 +353,9 @@ function AdminServicesPage() {
       }
     },
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnReconnect: true,
-      refreshInterval: 30000,
+      refreshInterval: 60000,
       dedupingInterval: 5000,
       errorRetryCount: 3,
       errorRetryInterval: 5000,
@@ -556,7 +556,7 @@ function AdminServicesPage() {
   };
 
   const { data: allServicesData } = useSWR(
-    `/api/admin/services?page=1&limit=999999&search=&filter=all_with_trash`,
+    `/api/admin/services?page=1&limit=2000&search=&filter=all_with_trash`,
     fetcher,
     {
       revalidateOnFocus: false,

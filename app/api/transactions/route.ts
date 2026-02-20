@@ -11,7 +11,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const rawLimit = parseInt(searchParams.get('limit') || '20');
+    const MAX_TRANSACTIONS_LIMIT = 500;
+    const limit = Math.min(isNaN(rawLimit) ? 20 : Math.max(1, rawLimit), MAX_TRANSACTIONS_LIMIT);
     const offset = parseInt(searchParams.get('offset') || '0');
     const page = parseInt(searchParams.get('page') || '1');
     const status = searchParams.get('status');
@@ -99,7 +101,7 @@ export async function GET(request: NextRequest) {
           orderBy: {
             createdAt: 'desc',
           },
-          take: limit > 10000 ? undefined : limit,
+          take: limit,
           skip: adminView ? skip : offset,
           select: {
             id: true,

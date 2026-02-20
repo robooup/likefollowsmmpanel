@@ -398,7 +398,7 @@ const Hero: React.FC = () => {
                 data-aos-duration="500"
               >
                 <span className="text-[var(--primary)] dark:text-[var(--secondary)]">
-                  SMMDOC - #1
+                  Like Follow SMM Panel - #1
                 </span>{' '}
                 <br />
                 Cheap SMM Panel
@@ -409,7 +409,7 @@ const Hero: React.FC = () => {
                 data-aos-duration="1000"
               >
                 Boost your online presence today with our Cheap SMM Panel –
-                the ultimate solution for social media success! SMMDOC is a
+                the ultimate solution for social media success! Like Follow SMM Panel is a
                 SMM Panel with more then 3 years on the market and 1,000+
                 Orders processed successfully until now!
               </p>
@@ -451,14 +451,14 @@ const Hero: React.FC = () => {
               >
                 <Image
                   src="/smmgen-users.webp"
-                  alt="SMMDOC Users"
+                  alt="Like Follow SMM Panel Users"
                   width={60}
                   height={40}
                   className="rounded"
                 />
                 <div className="text-gray-600 dark:text-gray-300 font-semibold text-base transition-colors duration-200">
                   <span className="text-[var(--primary)] dark:text-[var(--secondary)] font-bold transition-colors duration-200">
-                    {typeof usersCount === 'number' ? usersCount.toString() : '0'}
+                    {typeof activeUsersCount === 'number' ? activeUsersCount.toString() : '0'}
                   </span>
                   {' '}+ Users using our services.
                 </div>
@@ -487,7 +487,7 @@ const Hero: React.FC = () => {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 transition-colors duration-200">
                     Login to{' '}
                     <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-                      SMMDOC.
+                      Like Follow SMM Panel.
                     </span>
                   </h2>
                   <p className="text-gray-600 dark:text-gray-300 transition-colors duration-200">

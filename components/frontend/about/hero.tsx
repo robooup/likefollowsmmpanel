@@ -32,7 +32,7 @@ export default function Hero() {
           </h4>
           <h1 className="text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4 leading-tight transition-colors duration-200">
             <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-              SMMDOC:
+              Like Follow SMM Panel:
             </span>{' '}
             Pioneering Social Media{' '}
             <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
@@ -42,7 +42,7 @@ export default function Hero() {
           </h1>
           <div className="space-y-4 text-gray-600 dark:text-gray-300 text-justify mb-6 text-justify leading-relaxed transition-colors duration-200">
             <p>
-              Founded in 2018, SMMDOC has swiftly risen to prominence as a
+              Founded in 2018, Like Follow SMM Panel has swiftly risen to prominence as a
               leading provider of social media marketing (SMM) services in
               Bangladesh and neighboring regions. With a focus on offering the
               most affordable yet effective SMM panels, we have revolutionized
@@ -57,7 +57,7 @@ export default function Hero() {
               marketing, making it accessible and affordable for businesses of
               all sizes. We recognized the immense potential of social media
               in reshaping brand-customer interactions and set out to harness
-              this power for our clients. Today, SMMDOC stands as a testament
+              this power for our clients. Today, Like Follow SMM Panel stands as a testament
               to innovative solutions, customer-centric approaches, and
               results-driven strategies in the world of social media
               marketing.
@@ -75,7 +75,7 @@ export default function Hero() {
           <div className="relative">
             <Image
               src="/smmdoc-about-us.webp"
-              alt="SMMDOC about us"
+              alt="Like Follow SMM Panel about us"
               width={600}
               height={400}
               className="w-full max-w-lg mx-auto lg:mx-0 rounded-lg"

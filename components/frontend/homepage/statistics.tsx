@@ -15,7 +15,7 @@ interface CounterItem {
 const counterData: CounterItem[] = [
   { iconName: 'FaShoppingCart', title: 'Order Completed', count: '0' },
   { iconName: 'FaServer', title: 'Active Services', count: '0' },
-  { iconName: 'FaUsers', title: 'Active Users', count: '0' },
+  { iconName: 'FaUsers', title: 'Users using our services', count: '0' },
   { iconName: 'FaShareAlt', title: 'Affiliate Users', count: '0' },
 ];
 
@@ -84,9 +84,9 @@ export default function Statistics() {
       } else if (item.title === 'Active Services') {
         const value = typeof counts.activeServices === 'number' ? counts.activeServices : 0;
         countValue = value.toString();
-      } else if (item.title === 'Active Users') {
+      } else if (item.title === 'Users using our services') {
         const value = typeof counts.activeUsers === 'number' ? counts.activeUsers : 0;
-        countValue = value.toString();
+        countValue = `${value.toLocaleString()}+`;
       } else if (item.title === 'Affiliate Users') {
         const value = typeof counts.activeAffiliateUsers === 'number' ? counts.activeAffiliateUsers : 0;
         countValue = value.toString();

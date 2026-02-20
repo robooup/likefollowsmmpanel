@@ -1,4 +1,4 @@
-# SMMDOC
+# Like Follow SMM Panel
 
 **Your Social Media Growth Partner** - an SMM (Social Media Marketing) panel for buying and managing social media services (likes, followers, views, etc.) across multiple platforms.
 
@@ -6,7 +6,7 @@
 
 ## Overview
 
-SMMDOC is a full‑stack SMM panel that lets users order social media services, manage funds, use an API, run child panels, and participate in an affiliate program. Admins can manage orders, services, users, providers, payments, and site settings. The app supports user and admin dashboards, support tickets, announcements, blogs, and configurable payment gateways.
+Like Follow SMM Panel is a full‑stack SMM panel that lets users order social media services, manage funds, use an API, run child panels, and participate in an affiliate program. Admins can manage orders, services, users, providers, payments, and site settings. The app supports user and admin dashboards, support tickets, announcements, blogs, and configurable payment gateways.
 
 ---
 
@@ -16,7 +16,7 @@ SMMDOC is a full‑stack SMM panel that lets users order social media services, 
 |-------|--------------|
 | **Framework** | Next.js 16 (App Router), React 19 |
 | **Language** | TypeScript 5.8 |
-| **Database** | MySQL, Prisma ORM |
+| **Database** | PostgreSQL, Prisma ORM |
 | **Auth** | NextAuth.js (credentials, OAuth) |
 | **UI** | Tailwind CSS, Radix UI, Framer Motion, Lucide / React Icons |
 | **State** | Redux Toolkit, SWR |
@@ -63,13 +63,13 @@ SMMDOC is a full‑stack SMM panel that lets users order social media services, 
 
 - **Node.js** 18+  
 - **npm**  
-- **MySQL** (or compatible DB for `DATABASE_URL`)  
+- **PostgreSQL** (for `DATABASE_URL`)  
 
 ### 1. Clone and install
 
 ```bash
 git clone <repo-url>
-cd smmdoc
+cd likefollowsmmpanel
 npm install
 ```
 
@@ -78,7 +78,7 @@ npm install
 Copy `.env.example` to `.env` and fill in your values. At minimum:
 
 ```env
-DATABASE_URL="mysql://user:password@host:3306/database"
+DATABASE_URL="postgresql://user:password@host:5432/database"
 NEXTAUTH_URL="http://localhost:3000"
 NEXTAUTH_SECRET="your-secret"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
@@ -113,10 +113,10 @@ npm run create-admin
 
 This creates an admin with:
 
-- **Username:** `smmdoc_admin`  
+- **Username:** `likefollowsmmpanel_admin`  
 - **Password:** `suitableit`  
-- **Name:** `SMMDOC Admin`  
-- **Email:** `admin@smmdoc.com`  
+- **Name:** `Like Follow SMM Panel Admin`  
+- **Email:** `admin@likefollowsmmpanel.com`  
 
 Change the password after first login. If you see *"Failed to create admin because some or 1 admin is already exist."*, an admin already exists; use that account or manage admins from the admin panel.
 
@@ -149,4 +149,4 @@ When you start the app (`npm run dev` or `npm run start`), the sync job is sched
 
 ## Conclusions
 
-SMMDOC is a feature‑rich SMM panel with separate user and admin experiences, API and child‑panel support, and configurable payments and notifications. The stack (Next.js, Prisma, NextAuth, Tailwind) is chosen for maintainability and scalability. Use the create‑admin script only when no admin exists; afterward, manage users and roles from the admin panel.
+Like Follow SMM Panel is a feature‑rich SMM panel with separate user and admin experiences, API and child‑panel support, and configurable payments and notifications. The stack (Next.js, Prisma, NextAuth, Tailwind) is chosen for maintainability and scalability. Use the create‑admin script only when no admin exists; afterward, manage users and roles from the admin panel.

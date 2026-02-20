@@ -33,12 +33,12 @@ export default function WhyDifferent() {
           <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4 leading-tight transition-colors duration-200">
             What Sets{' '}
             <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-              SMMDOC
+              Like Follow SMM Panel
             </span>{' '}
             Apart?
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 text-justify leading-relaxed transition-colors duration-200">
-            In a crowded market of SMM panels, SMMDOC distinguishes itself
+            In a crowded market of SMM panels, Like Follow SMM Panel distinguishes itself
             through unparalleled service quality, innovative solutions, and
             customer-centric approach. Our commitment to excellence is evident
             in every aspect of our service - from the user-friendly interface

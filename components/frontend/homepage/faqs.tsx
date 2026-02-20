@@ -25,7 +25,7 @@ function FAQs() {
           <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
             People Also Asked to{' '}
             <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-              SMMDOC
+              Like Follow SMM Panel
             </span>
           </h2>
         </div>

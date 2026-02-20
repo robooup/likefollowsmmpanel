@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const iconPath = generalSettings.siteIcon && generalSettings.siteIcon.trim() !== '' 
       ? generalSettings.siteIcon 
       : '';
-    const siteUrl = generalSettings.siteUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://smmdoc.suitableit.com';
+    const siteUrl = generalSettings.siteUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://likefollowsmmpanel.suitableit.com';
 
     const manifest = {
       id: '/',
@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
     
     const fallbackManifest = {
       id: '/',
-      name: 'SMMDOC',
-      short_name: 'SMMDOC',
+      name: 'Like Follow SMM Panel',
+      short_name: 'Like Follow SMM Panel',
       description: 'Your Social Media Growth Partner',
       start_url: '/',
       scope: '/',

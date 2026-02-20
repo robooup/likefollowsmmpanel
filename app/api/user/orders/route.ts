@@ -15,7 +15,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const rawLimit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 10 : rawLimit), 200);
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || '';
     const serviceId = searchParams.get('serviceId');

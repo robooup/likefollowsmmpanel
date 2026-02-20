@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       }, { status: 500 });
     }
 
-    const urlMatch = databaseUrl.match(/^mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/);
+    const urlMatch = databaseUrl.match(/^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/);
     
     if (!urlMatch) {
       return NextResponse.json({

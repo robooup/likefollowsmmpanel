@@ -160,7 +160,7 @@ const Footer = () => {
                 ) : (
                   <Image
                     src="/logo.png"
-                    alt="SMMDOC White Logo"
+                    alt="Like Follow SMM Panel White Logo"
                     width={200}
                     height={60}
                     className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
@@ -272,7 +272,7 @@ const Footer = () => {
                   href="/"
                   className="text-white font-bold hover:text-[var(--primary)] dark:hover:text-[var(--secondary)] transition-colors duration-300"
                 >
-                  SMMDOC
+                  Like Follow SMM Panel
                 </Link>
                 .
               </p>

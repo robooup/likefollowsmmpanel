@@ -658,7 +658,7 @@ const Header: React.FC<HeaderProps> = ({
                 <>
                   <Image
                     src={displayLogo}
-                    alt="SMMDOC"
+                    alt="Like Follow SMM Panel"
                     width={400}
                     height={50}
                     className="h-14 lg:h-16 w-auto max-w-[400px] dark:hidden"
@@ -667,7 +667,7 @@ const Header: React.FC<HeaderProps> = ({
                   />
                   <Image
                     src={displayDarkLogo}
-                    alt="SMMDOC"
+                    alt="Like Follow SMM Panel"
                     width={400}
                     height={50}
                     className="h-14 lg:h-16 w-auto max-w-[400px] hidden dark:block"
@@ -678,7 +678,7 @@ const Header: React.FC<HeaderProps> = ({
               ) : (
                 <Image
                   src={displayLogo}
-                  alt="SMMDOC"
+                  alt="Like Follow SMM Panel"
                   width={400}
                   height={50}
                   className="h-14 lg:h-16 w-auto max-w-[400px]"
@@ -745,7 +745,7 @@ const Header: React.FC<HeaderProps> = ({
                   <>
                     <Image
                       src={displayLogo}
-                      alt="SMMDOC"
+                      alt="Like Follow SMM Panel"
                       width={200}
                       height={25}
                       className="h-12 w-auto dark:hidden"
@@ -753,7 +753,7 @@ const Header: React.FC<HeaderProps> = ({
                     />
                     <Image
                       src={displayDarkLogo}
-                      alt="SMMDOC"
+                      alt="Like Follow SMM Panel"
                       width={200}
                       height={25}
                       className="h-12 w-auto hidden dark:block"
@@ -763,7 +763,7 @@ const Header: React.FC<HeaderProps> = ({
                 ) : (
                   <Image
                     src={displayLogo}
-                    alt="SMMDOC"
+                    alt="Like Follow SMM Panel"
                     width={200}
                     height={25}
                     className="h-12 w-auto"

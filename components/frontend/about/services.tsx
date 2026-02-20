@@ -140,7 +140,7 @@ export default function Services() {
           Need
         </h2>
         <p className="text-gray-600 dark:text-gray-300  leading-relaxed max-w-3xl mx-auto transition-colors duration-200">
-          At SMMDOC, we offer a broad spectrum of social media marketing
+          At Like Follow SMM Panel, we offer a broad spectrum of social media marketing
           services. <br /> Our solutions are designed to cater to the unique
           requirements of each platform:
         </p>

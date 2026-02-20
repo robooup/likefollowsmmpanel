@@ -1,4 +1,4 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 import { serializeServices } from '@/lib/utils';
@@ -147,7 +147,10 @@ export async function GET(request: Request) {
         },
       };
       
-      services = await db.services.findMany(searchQuery);
+      services = await db.services.findMany({
+        ...searchQuery,
+        take: 500,
+      });
       
       paginatedCategories = [];
       totalCategories = 0;
@@ -227,6 +230,7 @@ export async function GET(request: Request) {
               }
             },
           },
+          take: 2000,
         });
       } else {
         [paginatedCategories, totalCategories] = await Promise.all([

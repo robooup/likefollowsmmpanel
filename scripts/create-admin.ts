@@ -27,9 +27,9 @@ async function main() {
 
   const admin = await prisma.users.create({
     data: {
-      username: 'smmdoc_admin',
-      name: 'SMMDOC Admin',
-      email: 'admin@smmdoc.com',
+      username: 'likefollowsmmpanel_admin',
+      name: 'Like Follow SMM Panel Admin',
+      email: 'admin@likefollowsmmpanel.com',
       password: hashedPassword,
       role: 'admin',
       status: 'active',

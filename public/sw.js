@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smmdoc-offline-v1';
+const CACHE_NAME = 'likefollowsmmpanel-offline-v1';
 
 const urlsToCache = [
   '/',

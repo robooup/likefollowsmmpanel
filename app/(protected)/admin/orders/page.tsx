@@ -479,9 +479,9 @@ const AdminOrdersPage = () => {
       }
     },
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnReconnect: true,
-      refreshInterval: 30000,
+      refreshInterval: 60000,
       dedupingInterval: 5000,
       errorRetryCount: 3,
       errorRetryInterval: 5000,

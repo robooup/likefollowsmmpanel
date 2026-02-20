@@ -91,6 +91,8 @@ export async function getUserDetails() {
           where: {
             userId: session.user.id,
           },
+          orderBy: { createdAt: 'desc' },
+          take: 100,
         });
 
         return {
