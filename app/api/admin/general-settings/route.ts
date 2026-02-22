@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { clearGeneralSettingsCache } from '@/lib/utils/general-settings';
 import { NextRequest, NextResponse } from 'next/server';
@@ -158,6 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     clearGeneralSettingsCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

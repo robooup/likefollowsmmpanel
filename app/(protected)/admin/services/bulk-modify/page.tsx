@@ -556,8 +556,7 @@ const BulkModifyPage = () => {
               </div>
             )}
 
-            <div style={{ minHeight: '600px' }}>
-              {(localServicesLoading || isInitialLoading || paginationLoading) ? (
+            {(localServicesLoading || isInitialLoading || paginationLoading) ? (
                 <BulkModifyTableSkeleton />
               ) : services.length === 0 ? (
               <div className="text-center py-12">
@@ -609,7 +608,6 @@ const BulkModifyPage = () => {
                 onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
               />
               )}
-            </div>
           </div>
         </div>
         <SelectCategoryModal

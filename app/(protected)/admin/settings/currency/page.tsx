@@ -404,6 +404,7 @@ const PaymentCurrencyPage = () => {
       if (response.ok && data.success) {
         clearCurrencyCache();
         await refreshCurrencyData();
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('currency');
         showToast('Currency settings saved successfully!', 'success');
       } else {
         const errorMessage = data.error || 'Failed to save currency settings';
@@ -442,9 +443,9 @@ const PaymentCurrencyPage = () => {
         });
 
         if (response.ok) {
-
           clearCurrencyCache();
           await refreshCurrencyData();
+          (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('currency');
           showToast('Currency added and saved successfully!', 'success');
         } else {
           showToast('Currency added but failed to save', 'error');
@@ -486,6 +487,7 @@ const PaymentCurrencyPage = () => {
       if (response.ok && data.success) {
         clearCurrencyCache();
         await refreshCurrencyData();
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('currency');
         showToast('Currency updated and saved successfully!', 'success');
       } else {
         const errorMessage = data.message || data.error || 'Failed to save currency';
@@ -537,9 +539,9 @@ const PaymentCurrencyPage = () => {
       });
 
       if (response.ok) {
-
         clearCurrencyCache();
         await refreshCurrencyData();
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('currency');
         showToast(`${currencyToDelete.code} deleted successfully!`, 'success');
 
         setTimeout(() => {
@@ -573,9 +575,9 @@ const PaymentCurrencyPage = () => {
       });
 
       if (response.ok) {
-
         clearCurrencyCache();
         await refreshCurrencyData();
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('currency');
         const currency = updatedCurrencies.find(c => c.id === id);
         showToast(`${currency?.code} ${currency?.enabled ? 'enabled' : 'disabled'} successfully!`, 'success');
       } else {

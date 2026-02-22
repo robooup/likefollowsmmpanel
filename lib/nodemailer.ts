@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from "nodemailer";
-import { createEmailTransporter, getFromEmailAddress } from './email-config';
+import { createEmailTransporter, getFromEmailAddress, invalidateEmailConfigCache } from './email-config';
 import { getAppName } from './utils/general-settings';
 import crypto from 'crypto';
 
@@ -73,6 +73,9 @@ export const sendMail = async ({
       console.error("- SMTP username is correct in admin email settings");
       console.error("- SMTP password is valid in admin email settings");
       console.error("- SMTP settings are correct for your email provider");
+      invalidateEmailConfigCache();
+    } else if (emailError.code === 'ECONNECTION' || emailError.code === 'ETIMEDOUT' || emailError.code === 'ESOCKET') {
+      invalidateEmailConfigCache();
     }
 
     return false;

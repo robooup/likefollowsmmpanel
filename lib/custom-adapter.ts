@@ -38,7 +38,7 @@ export const CustomAdapter = (): Adapter => ({
       const { sendAdminNewUserNotification } = await import('@/lib/notifications/admin-notifications');
       await sendAdminNewUserNotification(
         u.id,
-        u.name || u.username || 'User',
+        u.username || u.name || 'User',
         u.email || ''
       );
     } catch (notificationError) {

@@ -139,11 +139,11 @@ npm run test      # Run tests
 
 ---
 
-## Provider Order Sync (Automatic)
+## Provider Order Sync & Fresh Data
 
-Provider order sync runs **automatically every 5 minutes** using `node-cron` inside the Next.js process. No shell script or system crontab is required.
-
-When you start the app (`npm run dev` or `npm run start`), the sync job is scheduled. It runs as long as the app is running.
+- **TanStack Query** is used for admin orders, homepage stats, and providers. Data refetches when you return to the page or refocus the window.
+- **Provider sync**: Triggered when an admin opens the orders page; or call **POST /api/admin/provider-sync** (admin auth) to sync manually.
+- **Average time**: On Admin → Services, use the **Recalculate avg time** button (TanStack Query mutation calling **POST /api/admin/services/recalculate-average-time**).
 
 ---
 

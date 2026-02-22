@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { logger } from '@/lib/utils/logger';
+import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
+import type { SettingsScope } from '@/lib/settings-invalidation';
 
 interface UserSettings {
   resetPasswordEnabled: boolean;
@@ -71,18 +73,20 @@ export function useUserSettings(): UseUserSettingsReturn {
     }
   };
 
-  const fetchSettingsRef = useRef(false);
   useEffect(() => {
+    fetchSettings();
+  }, []);
 
-    if (fetchSettingsRef.current) return;
-    fetchSettingsRef.current = true;
-
-    fetchSettings().finally(() => {
-
-      setTimeout(() => {
-        fetchSettingsRef.current = false;
-      }, 1000);
-    });
+  useEffect(() => {
+    const handleSettingsInvalidated = (e: Event) => {
+      const ce = e as CustomEvent<{ scope?: SettingsScope }>;
+      const scope = ce.detail?.scope ?? 'all';
+      if (scope === 'user-settings' || scope === 'all') {
+        fetchSettings();
+      }
+    };
+    window.addEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+    return () => window.removeEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
   }, []);
 
   const memoizedRefetch = useMemo(() => fetchSettings, []);

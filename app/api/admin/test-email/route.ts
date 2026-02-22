@@ -1,8 +1,17 @@
 import { auth } from '@/auth';
-import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { createEmailTransporter, getFromEmailAddress } from '@/lib/email-config';
+import { createEmailTransporter, getFromEmailAddress, invalidateEmailConfigCache } from '@/lib/email-config';
 import { getAppName } from '@/lib/utils/general-settings';
+import { getEmailLayoutDataFromSettings } from '@/lib/email-templates/get-email-layout-data';
+import { createEmailTemplate } from '@/lib/email-templates/shared/email-layout';
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,14 +26,15 @@ export async function POST(req: NextRequest) {
     
     const body = await req.json();
     const { to, subject, message } = body;
-    
+
     if (!to || !subject || !message) {
       return NextResponse.json(
         { error: 'All fields (to, subject, message) are required' },
         { status: 400 }
       );
     }
-    
+
+    invalidateEmailConfigCache();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(to)) {
       return NextResponse.json(
@@ -45,35 +55,28 @@ export async function POST(req: NextRequest) {
     try {
       const fromEmail = await getFromEmailAddress();
       const appName = await getAppName();
-      
+
       if (!fromEmail) {
         return NextResponse.json(
           { error: 'Support email address not configured. Please configure email settings first.' },
           { status: 400 }
         );
       }
-      
+
+      const layoutData = await getEmailLayoutDataFromSettings();
+      const safeMessage = escapeHtml(message).replace(/\n/g, '<br>');
+      const bodyContent = `<p style="color: #374151; line-height: 1.6; margin: 0;">${safeMessage}</p>`;
+      const html = createEmailTemplate(
+        { ...layoutData, title: subject || 'Test Email' },
+        bodyContent
+      );
+
       await transporter.sendMail({
-         from: `"${appName} Test" <${fromEmail}>`,
-         to: to,
-         subject: subject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;">Test Email</h2>
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 0; color: #666;"><strong>This is a test email sent from your SMTP configuration.</strong></p>
-            </div>
-            <div style="margin: 20px 0;">
-              <h3 style="color: #333; margin-bottom: 10px;">Message:</h3>
-              <p style="color: #555; line-height: 1.6;">${message.replace(/\n/g, '<br>')}</p>
-            </div>
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; color: #888; font-size: 12px;">
-            <p>Sent at: ${new Date().toLocaleString()}</p>
-            <p>From: ${session.user.email || 'Admin'}</p>
-          </div>
-        </div>
-      `
-       });
+        from: `"${appName} Test" <${fromEmail}>`,
+        to: to,
+        subject: subject,
+        html,
+      });
 
       console.log(`✅ Test email sent successfully to ${to}`);
       return NextResponse.json({

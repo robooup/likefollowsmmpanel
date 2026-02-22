@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest) {
         dollarRate: parseFloat(dollarRate),
       },
     });
+
+    revalidatePath('/', 'layout');
     
     return NextResponse.json({
       success: true,

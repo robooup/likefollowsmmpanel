@@ -696,7 +696,7 @@ model Users {
   preferredCurrency                             String                   @default("USD")
   language                                      String                   @default("en")
   timezone                                      String                   @default("Asia/Dhaka")
-  timeFormat                                     String?                 @default("24")
+  timeFormat                                     String?                 @default("12")
   suspendedUntil                                DateTime?
   permissions                                   Json?
   activityLogs                                  ActivityLogs[]

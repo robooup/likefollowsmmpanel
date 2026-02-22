@@ -455,6 +455,7 @@ const IntegrationPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('Live Chat settings saved successfully!', 'success');
       } else {
         showToast('Failed to save Live Chat settings', 'error');
@@ -493,6 +494,7 @@ const IntegrationPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('Analytics settings saved successfully!', 'success');
       } else {
         showToast('Failed to save Analytics settings', 'error');
@@ -528,6 +530,7 @@ const IntegrationPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('Notification settings saved successfully!', 'success');
       } else {
         showToast('Failed to save notification settings', 'error');
@@ -593,6 +596,7 @@ const IntegrationPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('ReCAPTCHA settings saved successfully!', 'success');
       } else {
         showToast('Failed to save ReCAPTCHA settings', 'error');
@@ -657,6 +661,7 @@ const IntegrationPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('ReCAPTCHA settings saved successfully!', 'success');
       } else {
         showToast('Failed to save ReCAPTCHA settings', 'error');

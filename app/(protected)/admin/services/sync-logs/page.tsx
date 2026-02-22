@@ -560,7 +560,6 @@ const SyncLogsPage = () => {
             )}
           </div>
 
-          <div style={{ padding: '0 24px' }} className="min-h-[600px]">
             {logsLoading ? (
               <SyncLogsTableSkeleton />
             ) : syncLogs.length === 0 ? (
@@ -601,7 +600,6 @@ const SyncLogsPage = () => {
                 }}
               />
             )}
-          </div>
         </div>
         {deleteDialogOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

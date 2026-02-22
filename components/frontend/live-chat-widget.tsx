@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
+import type { SettingsScope } from '@/lib/settings-invalidation';
 import { useSession } from 'next-auth/react';
 import {
   FaComment,
@@ -45,23 +47,37 @@ export default function LiveChatWidget() {
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [generalWhatsAppNumber, setGeneralWhatsAppNumber] = useState<string>('');
 
-  useEffect(() => {
-    const fetchLiveChatSettings = async () => {
-      try {
-        const response = await fetch('/api/public/integration-settings/live-chat');
-        if (response.ok) {
-          const settings = await response.json();
-          setLiveChatSettings(settings);
-          setIsSettingsLoaded(true);
-        }
-      } catch (error) {
-        console.error('Error fetching live chat settings:', error);
+  const fetchLiveChatSettings = useCallback(async () => {
+    try {
+      const response = await fetch('/api/public/integration-settings/live-chat', { cache: 'no-store' });
+      if (response.ok) {
+        const settings = await response.json();
+        setLiveChatSettings(settings);
         setIsSettingsLoaded(true);
       }
-    };
-
-    fetchLiveChatSettings();
+    } catch (error) {
+      console.error('Error fetching live chat settings:', error);
+      setIsSettingsLoaded(true);
+    }
   }, []);
+
+  const fetchGeneralWhatsApp = useCallback(async () => {
+    try {
+      const response = await fetch('/api/public/general-settings', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.generalSettings?.whatsappNumber) {
+          setGeneralWhatsAppNumber(data.generalSettings.whatsappNumber);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching WhatsApp number:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveChatSettings();
+  }, [fetchLiveChatSettings]);
 
   useEffect(() => {
     if (isSettingsLoaded && liveChatSettings.tawkToEnabled && liveChatSettings.tawkToWidgetCode) {
@@ -131,21 +147,21 @@ export default function LiveChatWidget() {
   }, [isSettingsLoaded, liveChatSettings.tawkToEnabled, liveChatSettings.tawkToWidgetCode, liveChatSettings.visibility, session, status]);
 
   useEffect(() => {
-    const fetchGeneralWhatsApp = async () => {
-      try {
-        const response = await fetch('/api/public/general-settings');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.generalSettings?.whatsappNumber) {
-            setGeneralWhatsAppNumber(data.generalSettings.whatsappNumber);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching WhatsApp number:', error);
+    fetchGeneralWhatsApp();
+  }, [fetchGeneralWhatsApp]);
+
+  useEffect(() => {
+    const handleSettingsInvalidated = (e: Event) => {
+      const ce = e as CustomEvent<{ scope?: SettingsScope }>;
+      const scope = ce.detail?.scope ?? 'all';
+      if (scope === 'general' || scope === 'integrations' || scope === 'all') {
+        fetchLiveChatSettings();
+        fetchGeneralWhatsApp();
       }
     };
-    fetchGeneralWhatsApp();
-  }, []);
+    window.addEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+    return () => window.removeEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+  }, [fetchLiveChatSettings, fetchGeneralWhatsApp]);
 
   const toggleChat = () => {
     setIsChatExpanded(!isChatExpanded);

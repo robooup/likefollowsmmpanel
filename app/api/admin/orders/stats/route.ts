@@ -1,4 +1,4 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -72,24 +72,24 @@ export async function GET(req: NextRequest) {
         (userId ? 
           db.$queryRaw`
             SELECT
-              DATE(createdAt) as date,
+              DATE("createdAt") as date,
               COUNT(*) as orders,
               SUM(price) as revenue,
-              COUNT(DISTINCT userId) as unique_users
+              COUNT(DISTINCT "userId") as unique_users
             FROM new_orders
-            WHERE userId = ${userId}
-            GROUP BY DATE(createdAt)
+            WHERE "userId" = ${userId}
+            GROUP BY DATE("createdAt")
             ORDER BY date DESC
             LIMIT 30
           ` :
           db.$queryRaw`
             SELECT
-              DATE(createdAt) as date,
+              DATE("createdAt") as date,
               COUNT(*) as orders,
               SUM(price) as revenue,
-              COUNT(DISTINCT userId) as unique_users
+              COUNT(DISTINCT "userId") as unique_users
             FROM new_orders
-            GROUP BY DATE(createdAt)
+            GROUP BY DATE("createdAt")
             ORDER BY date DESC
             LIMIT 30
           `
@@ -97,26 +97,26 @@ export async function GET(req: NextRequest) {
         (userId ?
           db.$queryRaw`
             SELECT
-              DATE(createdAt) as date,
+              DATE("createdAt") as date,
               COUNT(*) as orders,
               SUM(price) as revenue,
-              COUNT(DISTINCT userId) as unique_users
+              COUNT(DISTINCT "userId") as unique_users
             FROM new_orders
-            WHERE createdAt >= ${new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000)}
-            AND userId = ${userId}
-            GROUP BY DATE(createdAt)
+            WHERE "createdAt" >= ${new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000)}
+            AND "userId" = ${userId}
+            GROUP BY DATE("createdAt")
             ORDER BY date DESC
             LIMIT 30
           ` :
           db.$queryRaw`
             SELECT
-              DATE(createdAt) as date,
+              DATE("createdAt") as date,
               COUNT(*) as orders,
               SUM(price) as revenue,
-              COUNT(DISTINCT userId) as unique_users
+              COUNT(DISTINCT "userId") as unique_users
             FROM new_orders
-            WHERE createdAt >= ${new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000)}
-            GROUP BY DATE(createdAt)
+            WHERE "createdAt" >= ${new Date(Date.now() - parseInt(period) * 24 * 60 * 60 * 1000)}
+            GROUP BY DATE("createdAt")
             ORDER BY date DESC
             LIMIT 30
           `

@@ -29,7 +29,9 @@ export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
     const settings = await db.paymentGatewaySettings.findFirst();
 
     if (settings) {
-      const mode = (settings.mode as 'Live' | 'Sandbox') || defaultConfig.mode;
+      const rawMode = (settings.mode ?? '').toString().trim();
+      const mode: 'Live' | 'Sandbox' =
+        rawMode.toLowerCase() === 'sandbox' ? 'Sandbox' : 'Live';
 
       cachedConfig = {
         gatewayName: settings.gatewayName || defaultConfig.gatewayName,
@@ -39,7 +41,7 @@ export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
         apiUrl: mode === 'Live'
           ? (settings.liveApiUrl || '')
           : (settings.sandboxApiUrl || ''),
-        mode: mode,
+        mode,
       };
     } else {
       cachedConfig = defaultConfig;
@@ -164,6 +166,11 @@ export async function getPaymentGatewayExchangeRate(): Promise<number> {
     console.error('Error fetching payment gateway exchange rate:', error);
     return 120.00;
   }
+}
+
+export async function isPaymentGatewaySandbox(): Promise<boolean> {
+  const config = await getPaymentGatewayConfig();
+  return config.mode === 'Sandbox';
 }
 
 export function clearPaymentGatewayCache(): void {

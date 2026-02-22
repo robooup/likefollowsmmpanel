@@ -394,18 +394,34 @@ async function handleRefill(params: Params, user: { id: number }) {
     return apiError('Missing order or orders parameter');
   }
 
-  const results: Array<{ order: number; refill?: number; error?: string }> = [];
+  const limitedIds = ids.slice(0, 100);
 
-  for (const orderId of ids.slice(0, 100)) {
-    const order = await db.newOrders.findUnique({
-      where: { id: orderId },
+  const [orders, existingRefills] = await Promise.all([
+    db.newOrders.findMany({
+      where: { id: { in: limitedIds } },
       select: {
         id: true,
         userId: true,
         status: true,
         service: { select: { refill: true, refillDays: true } },
       },
-    });
+    }),
+    db.refillRequests.findMany({
+      where: {
+        orderId: { in: limitedIds },
+        status: { in: ['pending', 'approved'] },
+      },
+      select: { orderId: true },
+    }),
+  ]);
+
+  const orderMap = new Map(orders.map((o) => [o.id, o]));
+  const existingOrderIds = new Set(existingRefills.map((r) => r.orderId));
+
+  const results: Array<{ order: number; refill?: number; error?: string }> = [];
+
+  for (const orderId of limitedIds) {
+    const order = orderMap.get(orderId);
 
     if (!order || order.userId !== user.id) {
       results.push({ order: orderId, error: 'Incorrect order ID' });
@@ -419,11 +435,7 @@ async function handleRefill(params: Params, user: { id: number }) {
       results.push({ order: orderId, error: 'Service does not support refill' });
       continue;
     }
-
-    const existing = await db.refillRequests.findFirst({
-      where: { orderId, status: { in: ['pending', 'approved'] } },
-    });
-    if (existing) {
+    if (existingOrderIds.has(orderId)) {
       results.push({ order: orderId, error: 'Refill already requested' });
       continue;
     }
@@ -508,18 +520,29 @@ async function handleCancel(params: Params, user: { id: number }) {
 
   const reason = 'API cancellation request';
 
-  const results: Array<{ order: number; cancel?: number; error?: string }> = [];
-
-  for (const orderId of ids) {
-    const order = await db.newOrders.findUnique({
-      where: { id: orderId },
+  const [orders, existingCancels] = await Promise.all([
+    db.newOrders.findMany({
+      where: { id: { in: ids } },
       select: {
         id: true,
         userId: true,
         status: true,
         service: { select: { cancel: true } },
       },
-    });
+    }),
+    db.cancelRequests.findMany({
+      where: { orderId: { in: ids }, status: 'pending' },
+      select: { orderId: true },
+    }),
+  ]);
+
+  const orderMap = new Map(orders.map((o) => [o.id, o]));
+  const existingOrderIds = new Set(existingCancels.map((c) => c.orderId));
+
+  const results: Array<{ order: number; cancel?: number; error?: string }> = [];
+
+  for (const orderId of ids) {
+    const order = orderMap.get(orderId);
 
     if (!order || order.userId !== user.id) {
       results.push({ order: orderId, error: 'Incorrect order ID' });
@@ -533,11 +556,7 @@ async function handleCancel(params: Params, user: { id: number }) {
       results.push({ order: orderId, error: 'Order cannot be cancelled' });
       continue;
     }
-
-    const existing = await db.cancelRequests.findFirst({
-      where: { orderId, status: 'pending' },
-    });
-    if (existing) {
+    if (existingOrderIds.has(orderId)) {
       results.push({ order: orderId, error: 'Cancel already requested' });
       continue;
     }

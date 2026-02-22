@@ -67,31 +67,35 @@ export async function GET(request: Request) {
       ],
     });
 
+    const annIds = announcements.map((a) => a.id);
+    const existingViews =
+      annIds.length > 0
+        ? await db.viewedAnnouncements.findMany({
+            where: {
+              announcementId: { in: annIds },
+              userId,
+            },
+            select: { announcementId: true },
+          })
+        : [];
+    const viewedAnnouncementIds = new Set(existingViews.map((v) => v.announcementId));
+
     await Promise.all(
       announcements.map(async (ann) => {
-        const existingView = await db.viewedAnnouncements.findUnique({
-          where: {
-            announcementId_userId: {
+        if (viewedAnnouncementIds.has(ann.id)) return;
+
+        await db.$transaction([
+          db.viewedAnnouncements.create({
+            data: {
               announcementId: ann.id,
               userId: userId,
             },
-          },
-        });
-
-        if (!existingView) {
-          await db.$transaction([
-            db.viewedAnnouncements.create({
-              data: {
-                announcementId: ann.id,
-                userId: userId,
-              },
-            }),
-            db.announcements.update({
-              where: { id: ann.id },
-              data: { views: { increment: 1 } },
-            }),
-          ]);
-        }
+          }),
+          db.announcements.update({
+            where: { id: ann.id },
+            data: { views: { increment: 1 } },
+          }),
+        ]);
       })
     );
 

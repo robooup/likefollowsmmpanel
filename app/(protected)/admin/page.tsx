@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Announcements from '@/components/dashboard/announcements';
 import { useSelector } from 'react-redux';
 import { getUserDetails } from '@/lib/actions/getUser';
@@ -497,63 +498,88 @@ export default function AdminDashboardPage() {
   
   const isModerator = userRole === 'moderator';
 
-  const initializeWithCache = () => {
-
-    const statsValid = isCacheValid(CACHE_KEYS.DASHBOARD_STATS);
-    const usersValid = isCacheValid(CACHE_KEYS.LATEST_USERS);
-    const transactionsValid = isCacheValid(CACHE_KEYS.PENDING_TRANSACTIONS);
-
-    const cachedStats = statsValid ? getCachedData(CACHE_KEYS.DASHBOARD_STATS) : null;
-    const defaultStats = {
-      totalOrders: 0,
-      totalUsers: 0,
-      totalServices: 0,
-      totalCategories: 0,
-      totalRevenue: 0,
-      totalPayments: 0,
-      last30DaysRevenue: 0,
-      recentOrders: [],
-      ordersByStatus: {
-        pending: 0,
-        processing: 0,
-        completed: 0,
-        cancelled: 0,
-        partial: 0,
-      },
-      dailyOrders: [],
-      todaysOrders: 0,
-      todaysProfit: 0,
-      newUsersToday: 0,
-    };
-
-    return {
-      stats: cachedStats || defaultStats,
-      latestUsers: usersValid ? getCachedData(CACHE_KEYS.LATEST_USERS) || [] : [],
-      pendingTransactions: transactionsValid ? getCachedData(CACHE_KEYS.PENDING_TRANSACTIONS) || [] : [],
-      hasStatsCache: statsValid && cachedStats !== null,
-      hasUsersCache: usersValid,
-      hasTransactionsCache: transactionsValid
-    };
+  const queryClient = useQueryClient();
+  const defaultStats: DashboardStats = {
+    totalOrders: 0,
+    totalUsers: 0,
+    totalServices: 0,
+    totalCategories: 0,
+    totalRevenue: 0,
+    totalPayments: 0,
+    last30DaysRevenue: 0,
+    recentOrders: [],
+    ordersByStatus: { pending: 0, processing: 0, completed: 0, cancelled: 0, partial: 0 },
+    dailyOrders: [],
+    todaysOrders: 0,
+    todaysProfit: 0,
+    newUsersToday: 0,
   };
 
-  const initialData = initializeWithCache();
+  const statsQuery = useQuery({
+    queryKey: ['admin', 'dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/dashboard/stats');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.success || !json.data) throw new Error(json.error || 'Failed to load stats');
+      return json.data as DashboardStats;
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+  });
 
-  const [stats, setStats] = useState<DashboardStats>(initialData.stats);
+  const usersQuery = useQuery({
+    queryKey: ['admin', 'dashboard', 'latest-users'],
+    queryFn: async () => {
+      const params = new URLSearchParams({ page: '1', limit: '5', role: 'user', sort: 'createdAt', order: 'desc' });
+      const res = await fetch(`/api/admin/users?${params}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to load users');
+      const list = (json.data || []).filter((u: User) => u.role === 'user');
+      return list.slice(0, 5) as User[];
+    },
+    enabled: !!hasUsersPermission,
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+  });
 
-  const [statsLoading, setStatsLoading] = useState(true);
+  const transactionsQuery = useQuery({
+    queryKey: ['admin', 'dashboard', 'pending-transactions'],
+    queryFn: async () => {
+      const { data } = await axiosInstance.get('/api/transactions', {
+        params: { admin: 'true', status: 'Pending', limit: 10, page: 1 },
+        timeout: 15000,
+      });
+      let transactions: PendingTransaction[] = [];
+      if (data?.success && Array.isArray(data.data)) transactions = data.data;
+      else if (Array.isArray(data)) transactions = data;
+      else if (data?.data && Array.isArray(data.data)) transactions = data.data;
+      const pending = transactions.filter(
+        (t: PendingTransaction) =>
+          t.status === 'pending' || t.status === 'Processing' ||
+          t.admin_status === 'Pending' || t.admin_status === 'pending'
+      );
+      return { list: pending.slice(0, 3), total: pending.length };
+    },
+    enabled: !!hasTransactionsPermission,
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+  });
+
+  const stats = statsQuery.data ?? defaultStats;
+  const statsLoading = statsQuery.isLoading;
+  const latestUsers = usersQuery.data ?? [];
+  const latestUsersLoading = usersQuery.isLoading;
+  const pendingTransactions = transactionsQuery.data?.list ?? [];
+  const totalTransactionCount = transactionsQuery.data?.total ?? 0;
+  const transactionsLoading = transactionsQuery.isLoading;
+
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
 
-  const [latestUsers, setLatestUsers] = useState<User[]>(initialData.latestUsers);
-  const [latestUsersLoading, setLatestUsersLoading] = useState(true);
-
-  const [pendingTransactions, setPendingTransactions] = useState<
-    PendingTransaction[]
-  >(initialData.pendingTransactions);
-  const [transactionsLoading, setTransactionsLoading] = useState(true);
-  const [totalTransactionCount, setTotalTransactionCount] = useState(initialData.pendingTransactions.length);
   const [customToast, setCustomToast] = useState<{
     message: string;
     type: 'success' | 'error' | 'info' | 'pending';
@@ -573,195 +599,6 @@ export default function AdminDashboardPage() {
 
   const [approveTransactionId, setApproveTransactionId] = useState('');
   const [defaultTransactionId, setDefaultTransactionId] = useState('');
-
-  const fetchAllData = useCallback(async (isBackgroundRefresh = false) => {
-    try {
-      const currentUserRole = session?.user?.role;
-      const currentUserPermissions = (session?.user as any)?.permissions as string[] | null | undefined;
-      const currentHasTransactionsPermission = 
-        currentUserRole === 'admin' || 
-        currentUserRole === 'super_admin' || 
-        (currentUserRole === 'moderator' && currentUserPermissions?.includes('all_transactions'));
-      const currentHasUsersPermission = 
-        currentUserRole === 'admin' || 
-        currentUserRole === 'super_admin' || 
-        (currentUserRole === 'moderator' && currentUserPermissions?.includes('users'));
-
-      const statsValid = isCacheValid(CACHE_KEYS.DASHBOARD_STATS);
-      const usersValid = isCacheValid(CACHE_KEYS.LATEST_USERS);
-      const transactionsValid = isCacheValid(CACHE_KEYS.PENDING_TRANSACTIONS);
-
-      if (!isBackgroundRefresh) {
-        setStatsLoading(true);
-        if (currentHasUsersPermission) {
-          setLatestUsersLoading(true);
-        }
-        if (currentHasTransactionsPermission) {
-          setTransactionsLoading(true);
-        }
-      }
-
-      const fetchWithRetry = async (url: string, options: any = {}, retries = 2): Promise<any> => {
-        for (let i = 0; i <= retries; i++) {
-          try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-            const response = await fetch(url, {
-              ...options,
-              signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return await response.json();
-          } catch (error) {
-            if (i === retries) throw error;
-
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-          }
-        }
-      };
-
-      const statsPromise = fetchWithRetry('/api/admin/dashboard/stats').catch(error => {
-        console.error('Stats API failed:', error);
-        return { success: false, error: error.message };
-      });
-
-      const usersQueryParams = new URLSearchParams({
-        page: '1',
-        limit: '5',
-        role: 'user',
-        sort: 'createdAt',
-        order: 'desc',
-      });
-      const usersPromise = currentHasUsersPermission
-        ? fetchWithRetry(`/api/admin/users?${usersQueryParams}`).catch(error => {
-            console.error('Users API failed:', error);
-            return { success: false, error: error.message };
-          })
-        : Promise.resolve({ success: false, error: null });
-
-      const transactionsPromise = currentHasTransactionsPermission
-        ? axiosInstance.get('/api/transactions', {
-            params: {
-              admin: 'true',
-              status: 'Pending',
-              limit: 10,
-              page: 1,
-            },
-            timeout: 15000,
-          }).catch(error => {
-            console.error('Transactions API failed:', error);
-            return { data: null, error: error.message };
-          })
-        : Promise.resolve({ data: null, error: null });
-
-      const results = await Promise.allSettled([
-        statsPromise,
-        usersPromise,
-        transactionsPromise,
-      ]);
-
-      const statsResult = results[0].status === 'fulfilled' ? results[0].value : { success: false, error: 'Stats request failed' };
-      const usersResult = results[1].status === 'fulfilled' ? results[1].value : { success: false, error: 'Users request failed' };
-      const transactionsResponse = results[2].status === 'fulfilled' ? results[2].value : { data: null, error: 'Transactions request failed' };
-
-      if (statsResult.success && statsResult.data) {
-        setStats(statsResult.data);
-        setCachedData(CACHE_KEYS.DASHBOARD_STATS, statsResult.data);
-      } else if (statsResult.error) {
-        console.warn('Stats data failed to load:', statsResult.error);
-
-      }
-
-      setStatsLoading(false);
-
-      if (currentHasUsersPermission) {
-        if (usersResult.success && usersResult.data) {
-          const filteredUsers = (usersResult.data || []).filter(
-            (user: User) => user.role === 'user'
-          );
-          const usersToShow = filteredUsers.slice(0, 5);
-          setLatestUsers(usersToShow);
-          setCachedData(CACHE_KEYS.LATEST_USERS, usersToShow);
-        } else if (usersResult.error) {
-          console.warn('Users data failed to load:', usersResult.error);
-        }
-        setLatestUsersLoading(false);
-      }
-
-      let transactionsToShow: PendingTransaction[] = [];
-      if (currentHasTransactionsPermission && transactionsResponse.data) {
-        const apiResponse = transactionsResponse.data;
-        let transactions: PendingTransaction[] = [];
-        
-        if (apiResponse.success && Array.isArray(apiResponse.data)) {
-          transactions = apiResponse.data;
-        } else if (Array.isArray(apiResponse)) {
-          transactions = apiResponse;
-        } else if (apiResponse.data && Array.isArray(apiResponse.data)) {
-          transactions = apiResponse.data;
-        }
-        
-        const pending = transactions.filter(
-          (transaction: PendingTransaction) => 
-            transaction.status === 'pending' || 
-            transaction.status === 'Processing' ||
-            transaction.admin_status === 'Pending' ||
-            transaction.admin_status === 'pending'
-        );
-        
-        setTotalTransactionCount(pending.length);
-        transactionsToShow = pending.slice(0, 3);
-        setPendingTransactions(transactionsToShow);
-        setCachedData(CACHE_KEYS.PENDING_TRANSACTIONS, transactionsToShow);
-      } else if ('error' in transactionsResponse && transactionsResponse.error) {
-        console.warn('Transactions data failed to load:', transactionsResponse.error);
-      }
-
-      setTransactionsLoading(false);
-
-    } catch (error) {
-      console.error('Critical error in fetchAllData:', error);
-
-      setStatsLoading(false);
-      setLatestUsersLoading(false);
-      setTransactionsLoading(false);
-
-      if (!isBackgroundRefresh) {
-        showToast('Some dashboard data failed to load. Please try refreshing.', 'error');
-      }
-    }
-  }, [session]);
-
-  useEffect(() => {
-
-    const statsValid = isCacheValid(CACHE_KEYS.DASHBOARD_STATS);
-    const usersValid = isCacheValid(CACHE_KEYS.LATEST_USERS);
-    const transactionsValid = isCacheValid(CACHE_KEYS.PENDING_TRANSACTIONS);
-
-    const hasAnyValidCache = statsValid || usersValid || transactionsValid;
-
-    if (hasAnyValidCache) {
-
-      fetchAllData(true);
-    } else {
-
-      fetchAllData(false);
-    }
-
-    const interval = setInterval(() => {
-
-      fetchAllData(true);
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, [fetchAllData]);
 
   const showToast = (
     message: string,
@@ -905,16 +742,10 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (result.success) {
-        const updatedTransactions = pendingTransactions.filter((t) => t.id !== transactionId);
-        setPendingTransactions(updatedTransactions);
-        setTotalTransactionCount((prev: number) => prev - 1);
-
-        setCachedData(CACHE_KEYS.PENDING_TRANSACTIONS, updatedTransactions);
-
-        invalidateCache(CACHE_KEYS.DASHBOARD_STATS);
-
-        setTimeout(() => fetchAllData(true), 100);
-
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'stats'] }),
+          queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'pending-transactions'] }),
+        ]);
         showToast('Transaction approved successfully!', 'success');
         setApproveConfirmDialog({
           open: false,
@@ -929,7 +760,7 @@ export default function AdminDashboardPage() {
       console.error('Error approving transaction:', error);
       showToast('Error approving transaction', 'error');
     }
-  }, [pendingTransactions, fetchAllData, showToast]);
+  }, [pendingTransactions, queryClient, showToast]);
 
   const handleCancel = useCallback((transactionId: string) => {
     const transaction = pendingTransactions.find((t) => t.id.toString() === transactionId);
@@ -952,16 +783,10 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (result.success) {
-        const updatedTransactions = pendingTransactions.filter((t) => t.id !== transactionId);
-        setPendingTransactions(updatedTransactions);
-        setTotalTransactionCount((prev: number) => prev - 1);
-
-        setCachedData(CACHE_KEYS.PENDING_TRANSACTIONS, updatedTransactions);
-
-        invalidateCache(CACHE_KEYS.DASHBOARD_STATS);
-
-        setTimeout(() => fetchAllData(true), 100);
-
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'stats'] }),
+          queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'pending-transactions'] }),
+        ]);
         showToast('Transaction cancelled successfully!', 'success');
         setCancelConfirmDialog({
           open: false,
@@ -975,24 +800,17 @@ export default function AdminDashboardPage() {
       console.error('Error cancelling transaction:', error);
       showToast('Error cancelling transaction', 'error');
     }
-  }, [pendingTransactions, fetchAllData, showToast]);
+  }, [pendingTransactions, queryClient, showToast]);
 
   const handleTransactionUpdate = useCallback((transactionId: number) => {
-
-    const updatedTransactions = pendingTransactions.filter((t) => t.id !== transactionId);
-    setPendingTransactions(updatedTransactions);
-    setTotalTransactionCount((prev: number) => prev - 1);
-
-    setCachedData(CACHE_KEYS.PENDING_TRANSACTIONS, updatedTransactions);
-
-    invalidateCache(CACHE_KEYS.DASHBOARD_STATS);
-
-    setTimeout(() => fetchAllData(true), 100);
-  }, [pendingTransactions, fetchAllData]);
+    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'pending-transactions'] });
+  }, [queryClient]);
 
   const handleRefreshTransactions = () => {
-    setTransactionsLoading(true);
-    fetchAllData();
+    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'stats'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'latest-users'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard', 'pending-transactions'] });
     showToast('Transactions refreshed successfully!', 'success');
   };
 

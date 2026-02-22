@@ -1,14 +1,14 @@
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    const session = await auth();
+
+    if (!session || (session.user.role !== 'admin' && session.user.role !== 'moderator')) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized. Admin or moderator required.', success: false, data: null },
         { status: 401 }
       );
     }
@@ -26,30 +26,53 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    console.log(`Found ${services.length} services to process`);
+    const serviceIds = services.map((s) => s.id);
+    if (serviceIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No active services to process',
+        data: { totalServices: 0, updatedCount: 0, results: [] }
+      });
+    }
+
+    type OrderRow = { id: number; serviceId: number; createdAt: Date; updatedAt: Date };
+    const last10PerService = await db.$queryRaw<OrderRow[]>`
+      SELECT id, "serviceId", "createdAt", "updatedAt"
+      FROM (
+        SELECT id, "serviceId", "createdAt", "updatedAt",
+               ROW_NUMBER() OVER (PARTITION BY "serviceId" ORDER BY "updatedAt" DESC) AS rn
+        FROM new_orders
+        WHERE "serviceId" = ANY(${serviceIds})
+          AND status = 'completed'
+          AND qty = 1000
+      ) sub
+      WHERE rn <= 10
+    `;
+
+    const ordersByService = new Map<number, OrderRow[]>();
+    for (const row of last10PerService) {
+      const list = ordersByService.get(row.serviceId) ?? [];
+      list.push(row);
+      ordersByService.set(row.serviceId, list);
+    }
+    for (const [, list] of ordersByService) {
+      list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
 
     let updatedCount = 0;
-    const results = [];
+    const results: Array<{
+      serviceId: number;
+      serviceName: string;
+      status: string;
+      message?: string;
+      avgTime?: string;
+      ordersUsed?: number;
+      error?: string;
+    }> = [];
 
     for (const service of services) {
       try {
-        const completedOrders = await db.newOrders.findMany({
-          where: {
-            serviceId: service.id,
-            status: 'completed',
-            qty: BigInt(1000)
-          },
-          select: {
-            id: true,
-            createdAt: true,
-            updatedAt: true,
-            qty: true
-          },
-          orderBy: {
-            updatedAt: 'desc'
-          },
-          take: 10
-        });
+        const completedOrders = ordersByService.get(service.id) ?? [];
 
         if (completedOrders.length < 10) {
           await db.services.update({
@@ -71,9 +94,7 @@ export async function GET(req: NextRequest) {
         for (const order of completedOrders) {
           const createdAt = new Date(order.createdAt);
           const updatedAt = new Date(order.updatedAt);
-          
           const diffSeconds = Math.abs((updatedAt.getTime() - createdAt.getTime()) / 1000);
-          
           if (diffSeconds > 0) {
             totalSeconds += diffSeconds;
             validOrders++;
@@ -95,12 +116,10 @@ export async function GET(req: NextRequest) {
         }
 
         const avgSeconds = totalSeconds / validOrders;
-        
         const hours = Math.floor(avgSeconds / 3600);
         const minutes = Math.floor((avgSeconds % 3600) / 60);
 
         let formattedTime = '';
-        
         if (hours === 0 && minutes === 0) {
           formattedTime = 'Not enough data';
         } else if (hours === 0) {
@@ -124,9 +143,6 @@ export async function GET(req: NextRequest) {
           avgTime: formattedTime,
           ordersUsed: validOrders
         });
-
-        console.log(`Updated service ${service.id} (${service.name}): ${formattedTime}`);
-
       } catch (error) {
         console.error(`Error processing service ${service.id}:`, error);
         results.push({
@@ -138,8 +154,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    console.log(`Average time calculation completed. Updated ${updatedCount} services.`);
-
     return NextResponse.json({
       success: true,
       message: `Average time calculation completed. Updated ${updatedCount} services.`,
@@ -149,7 +163,6 @@ export async function GET(req: NextRequest) {
         results
       }
     });
-
   } catch (error) {
     console.error('Error calculating average time:', error);
     return NextResponse.json(
@@ -162,4 +175,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

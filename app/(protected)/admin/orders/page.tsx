@@ -18,7 +18,7 @@ import {
   FaTimes,
   FaTimesCircle,
 } from 'react-icons/fa';
-import useSWR from 'swr';
+import { useQuery } from '@tanstack/react-query';
 
 import { useCurrency } from '@/contexts/currency-context';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
@@ -30,7 +30,16 @@ import axiosInstance from '@/lib/axios-instance';
 import { userOrderApi } from '@/lib/services/user-order-api';
 import { useAppDispatch } from '@/lib/store';
 
-const fetcher = (url: string) => axiosInstance.get(url).then((res) => res.data);
+const fetchOrders = (url: string) => axiosInstance.get(url).then((res) => res.data);
+const fetchStats = () => axiosInstance.get('/api/admin/orders/stats?period=all').then((res) => res.data);
+const fetchProviders = async () => {
+  const response = await fetch('/api/admin/providers?filter=active', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  return response.json();
+};
 
 const ChangeAllStatusModal = dynamic(() => import('@/components/admin/orders/modals/change-all-status'), {
   ssr: false,
@@ -425,75 +434,51 @@ const AdminOrdersPage = () => {
     data: ordersData,
     error: ordersError,
     isLoading: ordersLoading,
-    mutate: refreshOrders,
-  } = useSWR(ordersUrl, fetcher, {
-    revalidateOnFocus: false,
-    refreshInterval: 0,
-    dedupingInterval: 60000,
-    keepPreviousData: true,
-    errorRetryCount: 3,
-    errorRetryInterval: 1000,
-    onError: (error) => {
-      console.error('SWR orders fetch error:', error);
-      showToast('Failed to fetch orders', 'error');
-    },
+    refetch: refreshOrders,
+  } = useQuery({
+    queryKey: ['admin', 'orders', 'list', pagination.page, pagination.limit, statusFilter, searchTerm],
+    queryFn: () => fetchOrders(ordersUrl),
+    refetchOnWindowFocus: true,
+    staleTime: 60 * 1000,
+    placeholderData: (previousData) => previousData,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const {
     data: statsData,
     error: statsError,
     isLoading: statsLoading,
-    mutate: refreshStats,
-  } = useSWR('/api/admin/orders/stats?period=all', fetcher, {
-    revalidateOnFocus: false,
-    refreshInterval: 0,
-    dedupingInterval: 30000,
-    keepPreviousData: true,
-    errorRetryCount: 3,
-    errorRetryInterval: 1000,
-    onError: (error) => {
-      console.error('SWR stats fetch error:', error);
-    },
+    refetch: refreshStats,
+  } = useQuery({
+    queryKey: ['admin', 'orders', 'stats'],
+    queryFn: fetchStats,
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000,
+    placeholderData: (previousData) => previousData,
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  const { data: providersData, mutate: refreshProviders, error: providersError } = useSWR(
-    '/api/admin/providers?filter=active',
-    async (url) => {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error('Error fetching providers:', error);
-        throw error;
-      }
-    },
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      refreshInterval: 60000,
-      dedupingInterval: 5000,
-      errorRetryCount: 3,
-      errorRetryInterval: 5000,
-      onError: (error) => {
-        console.error('SWR providers fetch error:', error);
-      }
-    }
-  );
+  const { data: providersData, refetch: refreshProviders, error: providersError } = useQuery({
+    queryKey: ['admin', 'providers', 'active'],
+    queryFn: fetchProviders,
+    refetchOnWindowFocus: true,
+    staleTime: 60 * 1000,
+    retry: 3,
+    retryDelay: 5000,
+  });
 
   useEffect(() => {
     refreshStatsRef.current = refreshStats;
   }, [refreshStats]);
+
+  useEffect(() => {
+    if (ordersError) {
+      console.error('Orders fetch error:', ordersError);
+      showToast('Failed to fetch orders', 'error');
+    }
+  }, [ordersError]);
 
   const getProviderNameById = useCallback((providerId: number | string | null, providerName?: string) => {
     if (!providerId) {
@@ -708,16 +693,16 @@ const AdminOrdersPage = () => {
         }
 
         await Promise.all([
-          refreshOrders(undefined, { revalidate: true }),
-          refreshStats(undefined, { revalidate: true })
+          refreshOrders(),
+          refreshStats()
         ]);
 
         dispatch(userOrderApi.util.invalidateTags(['UserOrders']));
       } catch (error) {
         console.error('Error syncing provider orders on page reload:', error);
         await Promise.all([
-          refreshOrders(undefined, { revalidate: true }),
-          refreshStats(undefined, { revalidate: true })
+          refreshOrders(),
+          refreshStats()
         ]).catch(refreshError => {
           console.error('Error refreshing after sync failure:', refreshError);
         });
@@ -953,8 +938,8 @@ const AdminOrdersPage = () => {
       showToast('Refreshing orders...', 'pending');
       
       await Promise.all([
-        refreshOrders(undefined, { revalidate: true }),
-        refreshStats(undefined, { revalidate: true })
+        refreshOrders(),
+        refreshStats()
       ]);
       
       dispatch(userOrderApi.util.invalidateTags(['UserOrders']));
@@ -994,8 +979,8 @@ const AdminOrdersPage = () => {
       }
 
       await Promise.all([
-        refreshOrders(undefined, { revalidate: true }),
-        refreshStats(undefined, { revalidate: true })
+        refreshOrders(),
+        refreshStats()
       ]);
 
       dispatch(userOrderApi.util.invalidateTags(['UserOrders']));
@@ -1007,8 +992,8 @@ const AdminOrdersPage = () => {
       
       try {
         await Promise.all([
-          refreshOrders(undefined, { revalidate: true }),
-          refreshStats(undefined, { revalidate: true })
+          refreshOrders(),
+          refreshStats()
         ]);
         dispatch(userOrderApi.util.invalidateTags(['UserOrders']));
       } catch (refreshError) {

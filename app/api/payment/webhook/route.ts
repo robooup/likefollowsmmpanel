@@ -3,6 +3,7 @@ import { resolveEmailContent } from '@/lib/email-templates/resolve-email-content
 import { templateContextFromUser } from '@/lib/email-templates/replace-template-variables';
 import { sendMail } from '@/lib/nodemailer';
 import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
+import { ActivityLogger, getClientIP } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
 
     const apiKey = req.headers.get('rt-uddoktapay-api-key');
 
-    const { getPaymentGatewayApiKey } = await import('@/lib/payment-gateway-config');
+    const { getPaymentGatewayApiKey, isPaymentGatewaySandbox } = await import('@/lib/payment-gateway-config');
     const expectedApiKey = await getPaymentGatewayApiKey();
 
     if (!expectedApiKey) {
@@ -96,65 +97,93 @@ export async function POST(req: NextRequest) {
         console.log(`Payment ${invoice_id} status updated to ${paymentStatus}`);
 
         if (paymentStatus === "Success" && payment.user) {
-          const originalAmount = Number(payment.amount) || 0;
+          const isSandbox = await isPaymentGatewaySandbox();
+          if (!isSandbox) {
+            const originalAmount = Number(payment.amount) || 0;
 
-          const userSettings = await prisma.userSettings.findFirst();
-          let bonusAmount = 0;
+            const userSettings = await prisma.userSettings.findFirst();
+            let bonusAmount = 0;
 
-          if (userSettings && userSettings.bonusPercentage > 0) {
-            bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
-          }
-
-          const totalAmountToAdd = originalAmount + bonusAmount;
-
-          const user = await prisma.users.update({
-            where: { id: payment.userId },
-            data: {
-              balance: {
-                increment: totalAmountToAdd
-              },
-              balanceUSD: {
-                increment: originalAmount
-              },
-              total_deposit: {
-                increment: originalAmount
-              }
+            if (userSettings && userSettings.bonusPercentage > 0) {
+              bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
             }
-          });
 
-          console.log(`User ${payment.userId} balance updated after successful payment. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`);
+            const totalAmountToAdd = originalAmount + bonusAmount;
 
-          try {
-            await sendTransactionSuccessNotification(
-              payment.userId,
-              updatedPayment.id,
-              originalAmount
-            );
-          } catch (notifError) {
-            console.error('Error sending transaction success notification:', notifError);
-          }
-
-          if (payment.user?.email) {
-            try {
-              const emailData = await resolveEmailContent(
-                'transaction_payment_success',
-                {
-                  ...templateContextFromUser(payment.user),
-                  fund_amount: String(payment.amount ?? ''),
-                  transaction_id: transaction_id ?? payment.transactionId ?? '',
+            const user = await prisma.users.update({
+              where: { id: payment.userId },
+              data: {
+                balance: {
+                  increment: totalAmountToAdd
+                },
+                balanceUSD: {
+                  increment: originalAmount
+                },
+                total_deposit: {
+                  increment: originalAmount
                 }
-              );
-              if (emailData) {
-                await sendMail({
-                  sendTo: payment.user.email,
-                  subject: emailData.subject,
-                  html: emailData.html,
-                  fromName: emailData.fromName ?? undefined,
-                });
               }
-            } catch (emailError) {
-              console.error('Error sending payment success email:', emailError);
+            });
+
+            console.log(`User ${payment.userId} balance updated after successful payment. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`);
+
+            try {
+              await sendTransactionSuccessNotification(
+                payment.userId,
+                updatedPayment.id,
+                originalAmount
+              );
+            } catch (notifError) {
+              console.error('Error sending transaction success notification:', notifError);
             }
+
+            try {
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              const method = payment_method ?? (payment as any).paymentMethod ?? 'Webhook';
+              await ActivityLogger.fundAdded(
+                payment.userId,
+                username,
+                originalAmount,
+                'USD',
+                String(method ?? 'Webhook'),
+                getClientIP(req)
+              );
+            } catch (logError) {
+              console.error('Error logging fund_added activity:', logError);
+            }
+
+            try {
+              const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              await sendAdminNewTransactionNotification(updatedPayment.id, originalAmount, username);
+            } catch (adminNotifError) {
+              console.error('Error sending admin new transaction notification:', adminNotifError);
+            }
+
+            if (payment.user?.email) {
+              try {
+                const emailData = await resolveEmailContent(
+                  'transaction_payment_success',
+                  {
+                    ...templateContextFromUser(payment.user),
+                    fund_amount: String(payment.amount ?? ''),
+                    transaction_id: transaction_id ?? payment.transactionId ?? '',
+                  }
+                );
+                if (emailData) {
+                  await sendMail({
+                    sendTo: payment.user.email,
+                    subject: emailData.subject,
+                    html: emailData.html,
+                    fromName: emailData.fromName ?? undefined,
+                  });
+                }
+              } catch (emailError) {
+                console.error('Error sending payment success email:', emailError);
+              }
+            }
+          } else {
+            console.log(`Sandbox: Payment ${payment.invoiceId} marked Success without adding balance (webhook).`);
           }
         }
 

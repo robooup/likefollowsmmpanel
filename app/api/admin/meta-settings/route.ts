@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { clearMetaSettingsCache } from '@/lib/utils/meta-settings';
 import { NextRequest, NextResponse } from 'next/server';
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
     });
 
     clearMetaSettingsCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

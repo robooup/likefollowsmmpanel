@@ -1,6 +1,5 @@
 
 import { auth } from '@/auth';
-import { ActivityLogger } from '@/lib/activity-logger';
 import {
   convertToUSD,
   fetchCurrencyData,
@@ -105,22 +104,6 @@ export async function POST(req: NextRequest) {
     const gatewayName = await getPaymentGatewayName();
 
     try {
-      const username =
-        session.user.username ||
-        session.user.email?.split('@')[0] ||
-        `user${session.user.id}`;
-      try {
-        await ActivityLogger.fundAdded(
-          session.user.id,
-          username,
-          amountUSD,
-          'USD',
-          gatewayName
-        );
-      } catch (error) {
-        console.error('Failed to log payment creation activity:', error);
-      }
-
       const { getPaymentGatewayApiKey, getPaymentGatewayCheckoutUrl } = await import('@/lib/payment-gateway-config');
       const apiKey = await getPaymentGatewayApiKey();
       const checkoutUrl = await getPaymentGatewayCheckoutUrl();
@@ -511,33 +494,6 @@ export async function POST(req: NextRequest) {
               await sendTransactionPendingNotification(session.user.id, paymentToUse.id);
             } catch (notifError) {
               console.error('Error sending transaction pending notification:', notifError);
-            }
-
-            try {
-              const { sendAdminPendingTransactionNotification } = await import('@/lib/notifications/admin-notifications');
-              await sendAdminPendingTransactionNotification(
-                paymentToUse.id,
-                amountUSD,
-                session.user.name || session.user.email || 'User'
-              );
-            } catch (adminNotifError) {
-              console.error('Error sending admin pending transaction notification:', adminNotifError);
-            }
-
-            try {
-              const username =
-                session.user.username ||
-                session.user.email?.split('@')[0] ||
-                `user${session.user.id}`;
-              await ActivityLogger.fundAdded(
-                session.user.id,
-                username,
-                amountUSD,
-                'USD',
-                gatewayName
-              );
-            } catch (error) {
-              console.error('Failed to log payment creation activity:', error);
             }
           } catch (createError: any) {
             console.error('Error creating payment record:', createError);

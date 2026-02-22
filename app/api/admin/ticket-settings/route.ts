@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { clearTicketSettingsCache } from '@/lib/utils/ticket-settings';
 import { NextRequest, NextResponse } from 'next/server';
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
     });
 
     clearTicketSettingsCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

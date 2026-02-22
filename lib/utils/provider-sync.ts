@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { updateAffiliateCommissionForOrder } from '@/lib/affiliate-commission-helper';
+import { updateServiceAvgTime } from '@/lib/utils/service-avg-time';
 import axios from 'axios';
 import {
   ApiRequestBuilder,
@@ -107,6 +108,25 @@ export async function runProviderSync(
     `Grouped orders into ${ordersByProvider.size} provider(s)`
   );
 
+  const providerIds = [...ordersByProvider.keys()].map((k) =>
+    typeof k === 'string' ? parseInt(k, 10) : k
+  );
+  const providersList =
+    providerIds.length > 0
+      ? await db.apiProviders.findMany({
+          where: { id: { in: providerIds } },
+          select: {
+            id: true,
+            name: true,
+            api_url: true,
+            api_key: true,
+            status: true,
+            timeout_seconds: true
+          }
+        })
+      : [];
+  const providerMap = new Map(providersList.map((p) => [p.id, p]));
+
   let totalSynced = 0;
   let totalProcessed = 0;
 
@@ -127,17 +147,7 @@ export async function runProviderSync(
     try {
       const providerIdInt =
         typeof providerIdKey === 'string' ? parseInt(providerIdKey, 10) : providerIdKey;
-      const provider = await db.apiProviders.findUnique({
-        where: { id: providerIdInt },
-        select: {
-          id: true,
-          name: true,
-          api_url: true,
-          api_key: true,
-          status: true,
-          timeout_seconds: true
-        }
-      });
+      const provider = providerMap.get(providerIdInt);
 
       if (!provider) {
         console.log(`Provider not found: ${providerIdKey}`);
@@ -155,6 +165,7 @@ export async function runProviderSync(
         `Syncing ${orders.length} orders for provider: ${provider.name} (ID: ${provider.id})`
       );
 
+      const updatedOrderIds: number[] = [];
       for (const order of orders) {
         if (Date.now() - startTime > MAX_SYNC_TIME_MS) {
           console.log('Sync time limit reached, stopping order sync');
@@ -166,56 +177,7 @@ export async function runProviderSync(
           const syncResult = await syncSingleOrder(order, provider, action);
           if (syncResult.updated) {
             totalSynced++;
-
-            if (broadcast) {
-              const updatedOrder = await db.newOrders.findUnique({
-                where: { id: order.id },
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      email: true,
-                      name: true,
-                      username: true,
-                      currency: true
-                    }
-                  },
-                  service: {
-                    select: {
-                      id: true,
-                      name: true,
-                      rate: true,
-                      min_order: true,
-                      max_order: true,
-                      providerId: true,
-                      providerName: true,
-                      providerServiceId: true
-                    }
-                  },
-                  category: {
-                    select: {
-                      id: true,
-                      category_name: true
-                    }
-                  }
-                }
-              });
-
-              if (updatedOrder) {
-                broadcastOrderUpdate(order.id, {
-                  id: updatedOrder.id,
-                  status: updatedOrder.status,
-                  providerStatus: updatedOrder.providerStatus,
-                  startCount: updatedOrder.startCount,
-                  remains: updatedOrder.remains,
-                  charge: updatedOrder.charge,
-                  lastSyncAt: updatedOrder.lastSyncAt,
-                  user: updatedOrder.user,
-                  service: updatedOrder.service,
-                  category: updatedOrder.category
-                });
-              }
-            }
+            if (broadcast) updatedOrderIds.push(order.id);
           }
           syncResults.push(syncResult);
 
@@ -244,6 +206,55 @@ export async function runProviderSync(
               currentOrderId: order.id
             });
           }
+        }
+      }
+
+      if (broadcast && updatedOrderIds.length > 0) {
+        const updatedOrders = await db.newOrders.findMany({
+          where: { id: { in: updatedOrderIds } },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                username: true,
+                currency: true
+              }
+            },
+            service: {
+              select: {
+                id: true,
+                name: true,
+                rate: true,
+                min_order: true,
+                max_order: true,
+                providerId: true,
+                providerName: true,
+                providerServiceId: true
+              }
+            },
+            category: {
+              select: {
+                id: true,
+                category_name: true
+              }
+            }
+          }
+        });
+        for (const updatedOrder of updatedOrders) {
+          broadcastOrderUpdate(updatedOrder.id, {
+            id: updatedOrder.id,
+            status: updatedOrder.status,
+            providerStatus: updatedOrder.providerStatus,
+            startCount: updatedOrder.startCount,
+            remains: updatedOrder.remains,
+            charge: updatedOrder.charge,
+            lastSyncAt: updatedOrder.lastSyncAt,
+            user: updatedOrder.user,
+            service: updatedOrder.service,
+            category: updatedOrder.category
+          });
         }
       }
     } catch (error) {
@@ -497,6 +508,11 @@ async function syncSingleOrder(
           await db.$transaction(async (tx) => {
             await updateAffiliateCommissionForOrder(order.id, 'completed', tx);
           });
+          try {
+            await updateServiceAvgTime(order.serviceId);
+          } catch (avgErr) {
+            console.error(`[Provider Sync] Failed to update avg_time for service ${order.serviceId}:`, avgErr);
+          }
         }
       }
 

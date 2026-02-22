@@ -3,10 +3,12 @@
 import Image from 'next/image';
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useSession } from 'next-auth/react';
-import { FaChevronDown, FaDesktop, FaHome, FaMoon, FaSignOutAlt, FaSun, FaTachometerAlt, FaUserCog, FaWallet } from 'react-icons/fa';
+import { FaChevronDown, FaHome, FaMoon, FaSignOutAlt, FaSun, FaTachometerAlt, FaUserCog, FaWallet } from 'react-icons/fa';
 import { useUserSettings } from '@/hooks/use-user-settings';
 import { logger } from '@/lib/utils/logger';
 import { cachedFetch } from '@/lib/utils/api-cache';
+import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
+import type { SettingsScope } from '@/lib/settings-invalidation';
 
 const useSafeSession = () => {
   const [sessionData, setSessionData] = useState({
@@ -190,7 +192,7 @@ const Header: React.FC<HeaderProps> = ({
   AvatarFallback.displayName = 'AvatarFallback';
 
   const ThemeToggle = memo(({ inMenu = false }: { inMenu?: boolean }) => {
-    const [theme, setTheme] = useState('system');
+    const [theme, setTheme] = useState('light');
     const [mounted, setMounted] = useState(false);
     const themeInitialized = useRef(false);
 
@@ -199,7 +201,7 @@ const Header: React.FC<HeaderProps> = ({
       themeInitialized.current = true;
 
       setMounted(true);
-      const savedTheme = localStorage.getItem('theme') || 'system';
+      const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
       applyTheme(savedTheme);
     }, []);
@@ -208,13 +210,8 @@ const Header: React.FC<HeaderProps> = ({
       const root = document.documentElement;
       if (theme === 'dark') {
         root.classList.add('dark');
-      } else if (theme === 'light') {
-        root.classList.remove('dark');
       } else {
         root.classList.remove('dark');
-        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          root.classList.add('dark');
-        }
       }
     };
 
@@ -329,17 +326,13 @@ const Header: React.FC<HeaderProps> = ({
 
       setTimeout(() => {
         setTheme(newTheme);
-        if (newTheme === 'system') {
-          localStorage.removeItem('theme');
-        } else {
-          localStorage.setItem('theme', newTheme);
-        }
+        localStorage.setItem('theme', newTheme);
         applyTheme(newTheme);
       }, 150);
     };
 
     const cycleTheme = () => {
-      const themeOrder = ['system', 'light', 'dark'];
+      const themeOrder = ['light', 'dark'];
       const currentIndex = themeOrder.indexOf(theme);
       const nextIndex = (currentIndex + 1) % themeOrder.length;
       const nextTheme = themeOrder[nextIndex];
@@ -357,7 +350,6 @@ const Header: React.FC<HeaderProps> = ({
     const themeOptions = [
       { key: 'light', label: 'Light', icon: FaSun },
       { key: 'dark', label: 'Dark', icon: FaMoon },
-      { key: 'system', label: 'System', icon: FaDesktop },
     ];
 
     if (inMenu) {
@@ -380,7 +372,7 @@ const Header: React.FC<HeaderProps> = ({
       );
     }
 
-    const currentTheme = themeOptions.find((option) => option.key === theme) || themeOptions[2];
+    const currentTheme = themeOptions.find((option) => option.key === theme) || themeOptions[0];
     const CurrentIcon = currentTheme.icon;
 
     return (
@@ -576,13 +568,9 @@ const Header: React.FC<HeaderProps> = ({
   const toggleMenu = useCallback(() => setIsMenuOpen(prev => !prev), []);
 
   const logoFetchedRef = useRef(false);
-  useEffect(() => {
-    if (logoFetchedRef.current) {
-      setMounted(true);
-      setLogoLoaded(true);
-      return;
-    }
+  const [logoRefreshTrigger, setLogoRefreshTrigger] = useState(0);
 
+  useEffect(() => {
     let isMounted = true;
 
     const fetchSiteLogo = async () => {
@@ -631,6 +619,19 @@ const Header: React.FC<HeaderProps> = ({
     return () => {
       isMounted = false;
     };
+  }, [logoRefreshTrigger]);
+
+  useEffect(() => {
+    const handleSettingsInvalidated = (e: Event) => {
+      const ce = e as CustomEvent<{ scope?: SettingsScope }>;
+      const scope = ce.detail?.scope ?? 'all';
+      if (scope === 'general' || scope === 'meta' || scope === 'all') {
+        logoFetchedRef.current = false;
+        setLogoRefreshTrigger((t) => t + 1);
+      }
+    };
+    window.addEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+    return () => window.removeEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
   }, []);
 
   const mobileAvatarUrl = useMemo(() => {

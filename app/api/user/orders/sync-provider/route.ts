@@ -157,6 +157,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`Grouped ${limitedOrders.length} orders into ${ordersByProvider.size} provider(s)`);
 
+    const providerIds = [...ordersByProvider.keys()].map((k) =>
+      typeof k === 'string' ? parseInt(k, 10) : k
+    );
+    const providersList = providerIds.length > 0
+      ? await db.apiProviders.findMany({
+          where: { id: { in: providerIds } },
+          select: {
+            id: true,
+            name: true,
+            api_url: true,
+            api_key: true,
+            status: true,
+            timeout_seconds: true
+          }
+        })
+      : [];
+    const providerMap = new Map(providersList.map((p) => [p.id, p]));
+
     let totalProcessed = 0;
     let totalSynced = 0;
     const syncResults: any[] = [];
@@ -176,17 +194,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const providerIdInt = typeof providerIdKey === 'string' ? parseInt(providerIdKey) : providerIdKey;
-        const provider = await db.apiProviders.findUnique({
-          where: { id: providerIdInt },
-          select: {
-            id: true,
-            name: true,
-            api_url: true,
-            api_key: true,
-            status: true,
-            timeout_seconds: true
-          }
-        });
+        const provider = providerMap.get(providerIdInt);
 
         if (!provider) {
           console.log(`Provider not found: ${providerIdKey}`);
@@ -200,6 +208,7 @@ export async function POST(req: NextRequest) {
 
         console.log(`Syncing ${providerOrders.length} orders for provider: ${provider.name} (ID: ${provider.id})`);
 
+        const updatedOrderIds: number[] = [];
         for (const order of providerOrders) {
           if (Date.now() - startTime > MAX_SYNC_TIME_MS) {
             console.log('Sync time limit reached, stopping order sync');
@@ -212,54 +221,7 @@ export async function POST(req: NextRequest) {
             
             if (syncResult.updated) {
               totalSynced++;
-              
-              const updatedOrder = await db.newOrders.findUnique({
-                where: { id: order.id },
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                      email: true,
-                      username: true,
-                      currency: true
-                    }
-                  },
-                  service: {
-                    select: {
-                      id: true,
-                      name: true,
-                      rate: true,
-                      min_order: true,
-                      max_order: true,
-                      providerId: true,
-                      providerName: true,
-                      providerServiceId: true
-                    }
-                  },
-                  category: {
-                    select: {
-                      id: true,
-                      category_name: true
-                    }
-                  }
-                }
-              });
-
-              if (updatedOrder) {
-                broadcastOrderUpdate(order.id, {
-                  id: updatedOrder.id,
-                  status: updatedOrder.status,
-                  providerStatus: updatedOrder.providerStatus,
-                  startCount: updatedOrder.startCount,
-                  remains: updatedOrder.remains,
-                  charge: updatedOrder.charge,
-                  lastSyncAt: updatedOrder.lastSyncAt,
-                  user: updatedOrder.user,
-                  service: updatedOrder.service,
-                  category: updatedOrder.category
-                });
-              }
+              updatedOrderIds.push(order.id);
             }
 
             syncResults.push(syncResult);
@@ -270,6 +232,55 @@ export async function POST(req: NextRequest) {
               orderId: order.id,
               updated: false,
               error: error instanceof Error ? error.message : 'Unknown error'
+            });
+          }
+        }
+
+        if (updatedOrderIds.length > 0) {
+          const updatedOrders = await db.newOrders.findMany({
+            where: { id: { in: updatedOrderIds } },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  username: true,
+                  currency: true
+                }
+              },
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  rate: true,
+                  min_order: true,
+                  max_order: true,
+                  providerId: true,
+                  providerName: true,
+                  providerServiceId: true
+                }
+              },
+              category: {
+                select: {
+                  id: true,
+                  category_name: true
+                }
+              }
+            }
+          });
+          for (const updatedOrder of updatedOrders) {
+            broadcastOrderUpdate(updatedOrder.id, {
+              id: updatedOrder.id,
+              status: updatedOrder.status,
+              providerStatus: updatedOrder.providerStatus,
+              startCount: updatedOrder.startCount,
+              remains: updatedOrder.remains,
+              charge: updatedOrder.charge,
+              lastSyncAt: updatedOrder.lastSyncAt,
+              user: updatedOrder.user,
+              service: updatedOrder.service,
+              category: updatedOrder.category
             });
           }
         }

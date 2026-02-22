@@ -12,6 +12,28 @@ export interface EmailConfig {
   from: string;
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+type EmailCache = {
+  config: EmailConfig;
+  transporter: Transporter;
+  fromEmail: string;
+  cachedAt: number;
+};
+
+let emailCache: EmailCache | null = null;
+
+export function invalidateEmailConfigCache(): void {
+  if (emailCache) {
+    try {
+      emailCache.transporter.close();
+    } catch {
+    }
+    emailCache = null;
+    console.log('Email config cache invalidated');
+  }
+}
+
 export async function getEmailConfig(): Promise<EmailConfig | null> {
   try {
     const emailSettings = await prisma.emailSettings.findFirst({
@@ -42,8 +64,14 @@ export async function getEmailConfig(): Promise<EmailConfig | null> {
 }
 
 export async function createEmailTransporter(): Promise<Transporter | null> {
-  const config = await getEmailConfig();
+  const now = Date.now();
+  if (emailCache && now - emailCache.cachedAt < CACHE_TTL_MS) {
+    return emailCache.transporter;
+  }
 
+  invalidateEmailConfigCache();
+
+  const config = await getEmailConfig();
   if (!config) {
     return null;
   }
@@ -57,16 +85,13 @@ export async function createEmailTransporter(): Promise<Transporter | null> {
       tls: {
         rejectUnauthorized: false,
       },
-
       pool: true,
       maxConnections: 1,
       rateDelta: 20000,
       rateLimit: 5,
-
       connectionTimeout: 60000,
       greetingTimeout: 30000,
       socketTimeout: 60000,
-
       ...(process.env.DKIM_PRIVATE_KEY && {
         dkim: {
           domainName: config.from.split('@')[1] || config.host,
@@ -76,15 +101,20 @@ export async function createEmailTransporter(): Promise<Transporter | null> {
       }),
     });
 
-    console.log('🔍 Attempting to verify transporter...');
     try {
       await transporter.verify();
       console.log('Email transporter created and verified successfully');
     } catch (verifyError) {
-      console.warn('Transporter verification failed, but continuing anyway:', (verifyError as Error).message);
-      console.log('Transporter created without verification');
+      console.warn('Transporter verification failed, continuing anyway:', (verifyError as Error).message);
     }
 
+    const fromEmail = config.from || config.auth.user;
+    emailCache = {
+      config,
+      transporter,
+      fromEmail,
+      cachedAt: Date.now(),
+    };
     return transporter;
   } catch (error) {
     const err = error as Error & { code?: string; command?: string; response?: string; responseCode?: number };
@@ -101,16 +131,21 @@ export async function createEmailTransporter(): Promise<Transporter | null> {
 }
 
 export async function getFromEmailAddress(): Promise<string | null> {
-  try {
+  const now = Date.now();
+  if (emailCache && now - emailCache.cachedAt < CACHE_TTL_MS) {
+    return emailCache.fromEmail;
+  }
 
+  const config = await getEmailConfig();
+  if (config) {
+    return config.from || config.auth.user;
+  }
+
+  try {
     const emailSettings = await prisma.emailSettings.findFirst({
       orderBy: { updated_at: 'desc' }
     });
-
-    if (emailSettings?.email) {
-      return emailSettings.email;
-    }
-
+    if (emailSettings?.email) return emailSettings.email;
     return emailSettings?.smtp_username || null;
   } catch (error) {
     console.error('Error fetching support email from Email Settings:', error);

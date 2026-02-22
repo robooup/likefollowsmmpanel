@@ -242,6 +242,7 @@ const EmailSettingsPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('email');
         showToast('Email SMTP settings saved successfully!', 'success');
       } else {
         const errorData = await response.json();

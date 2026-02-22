@@ -10,19 +10,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const integrationSettings = await db.integrationSettings.findFirst();
-
-    const adminUserNotifications = {
-      welcomeEnabled: integrationSettings?.userNotifWelcome ?? false,
-      apiKeyChangedEnabled: integrationSettings?.userNotifApiKeyChanged ?? false,
-      orderStatusChangedEnabled: integrationSettings?.userNotifOrderStatusChanged ?? false,
-      newServiceEnabled: integrationSettings?.userNotifNewService ?? false,
-      serviceUpdatesEnabled: integrationSettings?.userNotifServiceUpdates ?? false,
-      transactionAlertEnabled: integrationSettings?.userNotifTransactionAlert ?? false,
-      transferFundsEnabled: integrationSettings?.userNotifTransferFunds ?? false,
-      affiliateWithdrawalsEnabled: integrationSettings?.userNotifAffiliateWithdrawals ?? false,
-      supportTicketsEnabled: integrationSettings?.userNotifSupportTickets ?? false,
-      contactMessagesEnabled: integrationSettings?.userNotifContactMessages ?? false,
+    const defaultPreferences: any = {
+      welcomeEnabled: true,
+      apiKeyChangedEnabled: true,
+      orderStatusChangedEnabled: true,
+      newServiceEnabled: true,
+      serviceUpdatesEnabled: true,
+      transactionAlertEnabled: true,
+      transferFundsEnabled: true,
+      affiliateWithdrawalsEnabled: true,
+      supportTicketsEnabled: true,
+      contactMessagesEnabled: true,
+      blogPostEnabled: true,
+      announcementEnabled: true,
     };
 
     const user = await db.users.findUnique({
@@ -30,62 +30,31 @@ export async function GET() {
       select: { permissions: true },
     });
 
-    const defaultPreferences: any = {
-      welcomeEnabled: adminUserNotifications.welcomeEnabled,
-      apiKeyChangedEnabled: adminUserNotifications.apiKeyChangedEnabled,
-      orderStatusChangedEnabled: adminUserNotifications.orderStatusChangedEnabled,
-      newServiceEnabled: adminUserNotifications.newServiceEnabled,
-      serviceUpdatesEnabled: adminUserNotifications.serviceUpdatesEnabled,
-      transactionAlertEnabled: adminUserNotifications.transactionAlertEnabled,
-      transferFundsEnabled: adminUserNotifications.transferFundsEnabled,
-      affiliateWithdrawalsEnabled: adminUserNotifications.affiliateWithdrawalsEnabled,
-      supportTicketsEnabled: adminUserNotifications.supportTicketsEnabled,
-      contactMessagesEnabled: adminUserNotifications.contactMessagesEnabled,
-    };
-
     let userPreferences = { ...defaultPreferences };
     if (user?.permissions && typeof user.permissions === 'object') {
       const permissions = user.permissions as any;
       if (permissions.notificationPreferences) {
         const savedPrefs = permissions.notificationPreferences;
         userPreferences = {
-          welcomeEnabled: adminUserNotifications.welcomeEnabled 
-            ? (savedPrefs.welcomeEnabled ?? defaultPreferences.welcomeEnabled)
-            : false,
-          apiKeyChangedEnabled: adminUserNotifications.apiKeyChangedEnabled
-            ? (savedPrefs.apiKeyChangedEnabled ?? defaultPreferences.apiKeyChangedEnabled)
-            : false,
-          orderStatusChangedEnabled: adminUserNotifications.orderStatusChangedEnabled
-            ? (savedPrefs.orderStatusChangedEnabled ?? defaultPreferences.orderStatusChangedEnabled)
-            : false,
-          newServiceEnabled: adminUserNotifications.newServiceEnabled
-            ? (savedPrefs.newServiceEnabled ?? defaultPreferences.newServiceEnabled)
-            : false,
-          serviceUpdatesEnabled: adminUserNotifications.serviceUpdatesEnabled
-            ? (savedPrefs.serviceUpdatesEnabled ?? defaultPreferences.serviceUpdatesEnabled)
-            : false,
-          transactionAlertEnabled: adminUserNotifications.transactionAlertEnabled
-            ? (savedPrefs.transactionAlertEnabled ?? defaultPreferences.transactionAlertEnabled)
-            : false,
-          transferFundsEnabled: adminUserNotifications.transferFundsEnabled
-            ? (savedPrefs.transferFundsEnabled ?? defaultPreferences.transferFundsEnabled)
-            : false,
-          affiliateWithdrawalsEnabled: adminUserNotifications.affiliateWithdrawalsEnabled
-            ? (savedPrefs.affiliateWithdrawalsEnabled ?? defaultPreferences.affiliateWithdrawalsEnabled)
-            : false,
-          supportTicketsEnabled: adminUserNotifications.supportTicketsEnabled
-            ? (savedPrefs.supportTicketsEnabled ?? defaultPreferences.supportTicketsEnabled)
-            : false,
-          contactMessagesEnabled: adminUserNotifications.contactMessagesEnabled
-            ? (savedPrefs.contactMessagesEnabled ?? defaultPreferences.contactMessagesEnabled)
-            : false,
+          welcomeEnabled: savedPrefs.welcomeEnabled ?? defaultPreferences.welcomeEnabled,
+          apiKeyChangedEnabled: savedPrefs.apiKeyChangedEnabled ?? defaultPreferences.apiKeyChangedEnabled,
+          orderStatusChangedEnabled: savedPrefs.orderStatusChangedEnabled ?? defaultPreferences.orderStatusChangedEnabled,
+          newServiceEnabled: savedPrefs.newServiceEnabled ?? defaultPreferences.newServiceEnabled,
+          serviceUpdatesEnabled: savedPrefs.serviceUpdatesEnabled ?? defaultPreferences.serviceUpdatesEnabled,
+          transactionAlertEnabled: savedPrefs.transactionAlertEnabled ?? defaultPreferences.transactionAlertEnabled,
+          transferFundsEnabled: savedPrefs.transferFundsEnabled ?? defaultPreferences.transferFundsEnabled,
+          affiliateWithdrawalsEnabled: savedPrefs.affiliateWithdrawalsEnabled ?? defaultPreferences.affiliateWithdrawalsEnabled,
+          supportTicketsEnabled: savedPrefs.supportTicketsEnabled ?? defaultPreferences.supportTicketsEnabled,
+          contactMessagesEnabled: savedPrefs.contactMessagesEnabled ?? defaultPreferences.contactMessagesEnabled,
+          blogPostEnabled: savedPrefs.blogPostEnabled ?? defaultPreferences.blogPostEnabled,
+          announcementEnabled: savedPrefs.announcementEnabled ?? defaultPreferences.announcementEnabled,
         };
       }
     }
 
     return NextResponse.json({
       success: true,
-      adminSettings: adminUserNotifications,
+      adminSettings: defaultPreferences,
       userPreferences: userPreferences,
     });
   } catch (error) {

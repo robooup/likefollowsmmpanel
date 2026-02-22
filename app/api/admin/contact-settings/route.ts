@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { contactDB } from '@/lib/contact-db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -106,6 +107,8 @@ export async function POST(request: NextRequest) {
         await contactDB.deleteContactCategory(Number(existingId));
       }
     }
+
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

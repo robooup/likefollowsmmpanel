@@ -208,6 +208,7 @@ const NotificationSettingsPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('User notification settings saved successfully!', 'success');
       } else {
         showToast('Failed to save user notification settings', 'error');
@@ -230,6 +231,7 @@ const NotificationSettingsPage = () => {
       });
 
       if (response.ok) {
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('integrations');
         showToast('Admin notification settings saved successfully!', 'success');
       } else {
         showToast('Failed to save admin notification settings', 'error');
@@ -448,9 +450,9 @@ const NotificationSettingsPage = () => {
 
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1 max-w-[75%] pr-4">
-                  <label className="form-label mb-1">Pending Transactions</label>
+                  <label className="form-label mb-1">New Transactions</label>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Get notified about pending transactions
+                    Get notified when a user successfully adds fund balance
                   </p>
                 </div>
                 <Switch
@@ -461,7 +463,7 @@ const NotificationSettingsPage = () => {
                       pendingTransactionsEnabled: !prev.pendingTransactionsEnabled
                     }))
                   }
-                  title="Toggle pending transaction notifications"
+                  title="Toggle new transaction (fund added) notifications"
                 />
               </div>
 

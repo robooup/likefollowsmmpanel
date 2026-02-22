@@ -12,61 +12,33 @@ interface NotificationData {
   link: string;
 }
 
+const USER_NOTIFICATION_SETTING_MAP: Record<string, string> = {
+  'welcome': 'userNotifWelcome',
+  'apiKeyChanged': 'userNotifApiKeyChanged',
+  'orderStatusChanged': 'userNotifOrderStatusChanged',
+  'newService': 'userNotifNewService',
+  'serviceUpdates': 'userNotifServiceUpdates',
+  'transactionAlert': 'userNotifTransactionAlert',
+  'transferFunds': 'userNotifTransferFunds',
+  'affiliateWithdrawals': 'userNotifAffiliateWithdrawals',
+  'supportTickets': 'userNotifSupportTickets',
+  'contactMessages': 'userNotifContactMessages',
+  'blogPost': 'userNotifBlogPost',
+  'announcement': 'userNotifAnnouncement',
+};
+
 async function shouldSendNotification(
   userId: number,
   notificationType: 'welcome' | 'apiKeyChanged' | 'orderStatusChanged' | 'newService' | 'serviceUpdates' | 'transactionAlert' | 'transferFunds' | 'affiliateWithdrawals' | 'supportTickets' | 'contactMessages' | 'blogPost' | 'announcement'
 ): Promise<boolean> {
   try {
-    const integrationSettings = await db.integrationSettings.findFirst();
-    
-    if (!integrationSettings) {
-      return false;
-    }
-
-    let adminEnabled = false;
-    switch (notificationType) {
-      case 'welcome':
-        adminEnabled = integrationSettings.userNotifWelcome ?? false;
-        break;
-      case 'apiKeyChanged':
-        adminEnabled = integrationSettings.userNotifApiKeyChanged ?? false;
-        break;
-      case 'orderStatusChanged':
-        adminEnabled = integrationSettings.userNotifOrderStatusChanged ?? false;
-        break;
-      case 'newService':
-        adminEnabled = integrationSettings.userNotifNewService ?? false;
-        break;
-      case 'serviceUpdates':
-        adminEnabled = integrationSettings.userNotifServiceUpdates ?? false;
-        break;
-      case 'transactionAlert':
-        adminEnabled = integrationSettings.userNotifTransactionAlert ?? false;
-        break;
-      case 'transferFunds':
-        adminEnabled = integrationSettings.userNotifTransferFunds ?? false;
-        break;
-      case 'affiliateWithdrawals':
-        adminEnabled = integrationSettings.userNotifAffiliateWithdrawals ?? false;
-        break;
-      case 'supportTickets':
-        adminEnabled = integrationSettings.userNotifSupportTickets ?? false;
-        break;
-      case 'contactMessages':
-        adminEnabled = integrationSettings.userNotifContactMessages ?? false;
-        break;
-      case 'blogPost':
-        adminEnabled = integrationSettings.userNotifBlogPost ?? false;
-        break;
-      case 'announcement':
-        adminEnabled = integrationSettings.userNotifAnnouncement ?? false;
-        break;
-      default:
+    const settings = await db.integrationSettings.findFirst();
+    const settingKey = USER_NOTIFICATION_SETTING_MAP[notificationType];
+    if (settingKey) {
+      const globalEnabled = settings ? (settings as Record<string, unknown>)[settingKey] === true : false;
+      if (!globalEnabled) {
         return false;
-    }
-
-    if (!adminEnabled) {
-      return false;
+      }
     }
 
     const user = await db.users.findUnique({
@@ -486,14 +458,13 @@ export async function sendTransactionSuccessNotification(
       amount
     });
 
+    await deletePendingTransactionNotification(userId, transactionId);
+
     const shouldSend = await shouldSendNotification(userId, 'transactionAlert');
-    
     if (!shouldSend) {
       console.log(`[NOTIFICATION] Transaction alert notification not sent - settings disabled`);
       return;
     }
-
-    await deletePendingTransactionNotification(userId, transactionId);
 
     const amountStr = typeof amount === 'number' ? amount.toFixed(2) : amount;
     const trxId = transactionId.toString();

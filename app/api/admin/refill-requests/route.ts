@@ -87,112 +87,71 @@ export async function GET(req: NextRequest) {
           createdAt: 'desc'
         },
         skip: (page - 1) * limit,
-        take: limit
+        take: limit,
+        include: {
+          order: {
+            select: {
+              id: true,
+              qty: true,
+              remains: true,
+              price: true,
+              usdPrice: true,
+              link: true,
+              status: true,
+              createdAt: true,
+              serviceId: true,
+              categoryId: true,
+              providerOrderId: true,
+            },
+            include: {
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  rate: true,
+                  refill: true,
+                  providerId: true,
+                  providerName: true,
+                  mode: true,
+                }
+              },
+              category: {
+                select: {
+                  id: true,
+                  category_name: true,
+                }
+              }
+            }
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              currency: true,
+            }
+          },
+          user_refillrequest_processedByTouser: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            }
+          }
+        }
       });
 
-      for (const request of refillRequests) {
-        if (request.orderId) {
-          try {
-            const order = await db.newOrders.findUnique({
-              where: { id: request.orderId },
-              select: {
-                id: true,
-                qty: true,
-                remains: true,
-                price: true,
-                usdPrice: true,
-                link: true,
-                status: true,
-                createdAt: true,
-                serviceId: true,
-                categoryId: true,
-                providerOrderId: true,
-              }
-            });
-
-            if (order && order.serviceId) {
-              try {
-                const service = await db.services.findUnique({
-                  where: { id: order.serviceId },
-                  select: {
-                    id: true,
-                    name: true,
-                    rate: true,
-                    refill: true,
-                    providerId: true,
-                    providerName: true,
-                    mode: true,
-                  }
-                });
-                (order as any).service = service;
-              } catch (error) {
-                console.warn(`Service not found for order ${order.id}`);
-                (order as any).service = null;
-              }
-            }
-
-            if (order && order.categoryId) {
-              try {
-                const category = await db.categories.findUnique({
-                  where: { id: order.categoryId },
-                  select: {
-                    id: true,
-                    category_name: true,
-                  }
-                });
-                (order as any).category = category;
-              } catch (error) {
-                console.warn(`Category not found for order ${order.id}`);
-                (order as any).category = null;
-              }
-            }
-
-            if (orderStatus !== 'all' && order?.status !== orderStatus) {
-              (request as any).order = null;
-            } else {
-              (request as any).order = order;
-            }
-          } catch (error) {
-            console.warn(`Order not found for refill request ${request.id}`);
-            (request as any).order = null;
-          }
+      refillRequests = refillRequests.map((request: any) => {
+        const order = request.order;
+        if (orderStatus !== 'all' && order?.status !== orderStatus) {
+          request.order = null;
         }
-
-        if (request.userId) {
-          try {
-            const user = await db.users.findUnique({
-              where: { id: request.userId },
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                currency: true,
-              }
-            });
-            (request as any).user = user;
-          } catch (error) {
-            console.warn(`User not found for refill request ${request.id}`);
-            (request as any).user = null;
-          }
+        if (request.user_refillrequest_processedByTouser) {
+          request.processedByUser = request.user_refillrequest_processedByTouser;
+          delete request.user_refillrequest_processedByTouser;
         }
-
-        if (request.processedBy) {
-          try {
-            const processedByUser = await db.users.findUnique({
-              where: { id: request.processedBy },
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              }
-            });
-            (request as any).processedByUser = processedByUser;
-          } catch (error) {
-            console.warn(`Processed by user not found for refill request ${request.id}`);
-            (request as any).processedByUser = null;
-          }
-        }
-      }
+        return request;
+      });
     } catch (error) {
       console.error('Error fetching refill requests:', error);
       refillRequests = [];

@@ -175,7 +175,6 @@ export async function fetchCurrencyData(): Promise<{
     };
   }
 }
-/** Format a number with admin currency settings (decimals, thousands sep, decimal sep) - no symbol */
 export function formatNumberWithSettings(
   amount: number,
   settings: CurrencySettings

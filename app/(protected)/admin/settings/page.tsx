@@ -588,6 +588,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok) {
         showToast('General settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('general');
 
         const newFilled = new Set<keyof GeneralSettings>();
         Object.keys(settingsToSave).forEach((key) => {
@@ -630,6 +631,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok) {
         showToast('Meta (SEO) settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('meta');
       } else {
         showToast('Failed to save meta settings', 'error');
       }
@@ -654,6 +656,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok) {
         showToast('User settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('user-settings');
       } else {
         const errorMessage = data.details || data.error || 'Failed to save user settings';
         console.error('Error saving user settings:', errorMessage);
@@ -712,6 +715,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok) {
         showToast('Ticket settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('ticket');
 
         setOriginalTicketSettings(ticketSettings);
       } else {
@@ -740,6 +744,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok && responseData.success) {
         showToast('Contact settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('contact');
       } else {
         showToast('Failed to save contact settings', 'error');
       }
@@ -764,6 +769,7 @@ const GeneralSettingsPage = () => {
 
       if (response.ok && data.success) {
         showToast('Module settings saved successfully!', 'success');
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('module');
       } else {
         const errorMessage = data.error || 'Failed to save module settings';
         console.error('Failed to save module settings:', errorMessage);

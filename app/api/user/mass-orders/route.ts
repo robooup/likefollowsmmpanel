@@ -70,6 +70,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const uniqueServiceIds = [...new Set(orders.map((o: any) => o.serviceId).filter(Boolean))];
+    const servicesList = uniqueServiceIds.length > 0
+      ? await db.services.findMany({
+          where: { id: { in: uniqueServiceIds } },
+          select: {
+            id: true,
+            name: true,
+            rate: true,
+            min_order: true,
+            max_order: true,
+            avg_time: true,
+            status: true,
+            packageType: true,
+          },
+        })
+      : [];
+    const serviceMap = new Map(servicesList.map((s) => [s.id, s]));
+
     const validatedOrders: any[] = [];
     let totalCost = 0;
     const validationErrors = [];
@@ -103,19 +121,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const service = await db.services.findUnique({
-          where: { id: serviceId },
-          select: {
-            id: true,
-            name: true,
-            rate: true,
-            min_order: true,
-            max_order: true,
-            avg_time: true,
-            status: true,
-            packageType: true,
-          },
-        });
+        const service = serviceMap.get(serviceId);
 
         if (!service) {
           validationErrors.push(

@@ -1,4 +1,5 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
@@ -88,6 +89,8 @@ export async function POST(request: Request) {
         footerCodes: customCodesSettings.footerCodes || '',
       },
     });
+
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

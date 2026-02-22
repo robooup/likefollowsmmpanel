@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOrderStatusChangedNotification } from '@/lib/notifications/user-notifications';
+import { updateServiceAvgTime } from '@/lib/utils/service-avg-time';
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -265,6 +266,21 @@ export async function PATCH(req: NextRequest) {
           ).catch(err => {
             console.error(`Failed to send notification for order ${order.id}:`, err);
           });
+        }
+      }
+    }
+
+    if (status === 'completed') {
+      const ordersWithService = await db.newOrders.findMany({
+        where: { id: { in: orderIdNumbers } },
+        select: { serviceId: true },
+      });
+      const serviceIds = [...new Set(ordersWithService.map((o) => o.serviceId))];
+      for (const serviceId of serviceIds) {
+        try {
+          await updateServiceAvgTime(serviceId);
+        } catch (avgErr) {
+          console.error(`Error updating service ${serviceId} avg_time after bulk status:`, avgErr);
         }
       }
     }

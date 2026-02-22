@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date()
     };
 
-    updateData.timeFormat = timeFormat || '24';
+    updateData.timeFormat = timeFormat || '12';
 
     console.log('Updating user with data:', {
       userId: session.user.id,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
           success: true,
           data: {
             timezone: updatedUser.timezone,
-            timeFormat: updatedUser.timeFormat || '24',
+            timeFormat: updatedUser.timeFormat || '12',
             updatedAt: updatedUser.updatedAt
           },
           error: null

@@ -42,6 +42,42 @@ export async function POST(request: Request) {
     const isMultipleOrders = Array.isArray(body);
     const orders = isMultipleOrders ? body : [body];
 
+    const uniqueServiceIds = [...new Set(orders.map((o: any) => o.serviceId).filter(Boolean))];
+    const servicesList = uniqueServiceIds.length > 0
+      ? await db.services.findMany({
+          where: { id: { in: uniqueServiceIds } },
+          select: {
+            id: true,
+            name: true,
+            rate: true,
+            min_order: true,
+            max_order: true,
+            avg_time: true,
+            status: true,
+            providerId: true,
+            packageType: true,
+            providerServiceId: true,
+          },
+        })
+      : [];
+    const serviceMap = new Map(servicesList.map((s) => [s.id, s]));
+
+    const uniqueProviderIds = [...new Set(servicesList.map((s) => s.providerId).filter((id): id is number => id != null))];
+    const providersList = uniqueProviderIds.length > 0
+      ? await db.apiProviders.findMany({
+          where: { id: { in: uniqueProviderIds } },
+          select: {
+            id: true,
+            name: true,
+            api_url: true,
+            api_key: true,
+            status: true,
+            timeout_seconds: true,
+          },
+        })
+      : [];
+    const providerMap = new Map(providersList.map((p) => [p.id, p]));
+
     for (const orderData of orders) {
       const { 
         categoryId, 
@@ -72,20 +108,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const service = await db.services.findUnique({
-        where: { id: serviceId },
-        select: {
-          id: true,
-          name: true,
-          rate: true,
-          min_order: true,
-          max_order: true,
-          avg_time: true,
-          status: true,
-          providerId: true,
-          packageType: true,
-        },
-      });
+      const service = serviceMap.get(serviceId);
 
       if (!service) {
         return NextResponse.json(
@@ -192,12 +215,8 @@ export async function POST(request: Request) {
         isSubscription = false,
       } = orderData;
 
-      const service = await db.services.findUnique({
-        where: { id: serviceId },
-        select: { rate: true, avg_time: true, packageType: true },
-      });
-
-      const calculatedUsdPrice = usdPrice || (service!.rate * qty) / 1000;
+      const serviceForPrice = serviceMap.get(serviceId);
+      const calculatedUsdPrice = usdPrice || (serviceForPrice!.rate * qty) / 1000;
 
       let finalPrice;
       if (user.currency === 'USD' || user.currency === 'USDT') {
@@ -222,11 +241,11 @@ export async function POST(request: Request) {
         price: Number(finalPrice),
         usdPrice: Number(calculatedUsdPrice),
         currency: String(user.currency || 'USD'),
-        avg_time: String(avg_time || service!.avg_time || 'N/A'),
+        avg_time: String(avg_time || serviceForPrice!.avg_time || 'N/A'),
         status: 'pending',
         remains: BigInt(Math.floor(qtyNum)),
         startCount: BigInt(0),
-        packageType: Number(service!.packageType || 1),
+        packageType: Number(serviceForPrice!.packageType || 1),
         comments: comments ? String(comments) : null,
         username: username ? String(username) : null,
         posts: posts ? parseInt(String(posts)) : null,
@@ -299,17 +318,7 @@ export async function POST(request: Request) {
 
         console.log(`Processing order ${i + 1}/${processedOrders.length} for service ${orderData.serviceId}...`);
 
-        const service = await db.services.findUnique({
-          where: { id: orderData.serviceId },
-          select: {
-            id: true,
-            name: true,
-            rate: true,
-            providerId: true,
-            providerServiceId: true,
-            packageType: true
-          }
-        });
+        const service = serviceMap.get(orderData.serviceId);
 
         if (!service) {
           throw new Error(`Service ${orderData.serviceId} not found`);
@@ -342,10 +351,7 @@ export async function POST(request: Request) {
         if (service?.providerId !== null && service?.providerId !== undefined) {
           try {
           console.log(`Service has providerId: ${service.providerId}, proceeding with forwarding...`);
-          console.log(`Fetching provider ${service.providerId}...`);
-          const provider = await db.apiProviders.findUnique({
-            where: { id: service.providerId }
-          });
+          const provider = providerMap.get(service.providerId);
 
           if (!provider) {
             throw new Error(`Provider ${service.providerId} not found`);

@@ -210,10 +210,23 @@ export default function AddFundsPage() {
         amount: minAmountBDT,
         currency: 'BDT',
       });
+    } else if (newCurrency === 'BDT' && userSettings?.minimumFundsToAddUSD) {
+      const minAmountUSD = userSettings.minimumFundsToAddUSD;
+      const currentRate = rate || 120;
+      const minAmountBDT = minAmountUSD * currentRate;
+      form.setValue('amountUSD', minAmountUSD.toFixed(2), { shouldValidate: true });
+      form.setValue('amountBDT', minAmountBDT.toFixed(2), { shouldValidate: true });
+      form.setValue('amountBDTConverted', minAmountBDT.toFixed(2), { shouldValidate: true });
+      form.setValue('amount', minAmountBDT.toFixed(2), { shouldValidate: true });
+      setTotalAmount({
+        amount: minAmountBDT,
+        currency: 'BDT',
+      });
     } else {
       form.setValue('amountUSD', '0', { shouldValidate: true });
       form.setValue('amountBDT', '0', { shouldValidate: true });
       form.setValue('amountBDTConverted', '0', { shouldValidate: true });
+      form.setValue('amount', '0', { shouldValidate: true });
       setTotalAmount({
         amount: 0,
         currency: newCurrency,
@@ -223,7 +236,21 @@ export default function AddFundsPage() {
 
   const amountUSDValue = form.watch('amountUSD');
   const amountBDTValue = form.watch('amountBDT');
-  
+  const methodValue = form.watch('method');
+
+  const minAmountUSD = userSettings?.minimumFundsToAddUSD ?? 0;
+  const maxAmountUSD = userSettings?.maximumFundsToAddUSD && userSettings.maximumFundsToAddUSD > 0 ? userSettings.maximumFundsToAddUSD : null;
+  const effectiveUSD = activeCurrency === 'USD'
+    ? parseFloat(amountUSDValue || '0') || 0
+    : (parseFloat(amountBDTValue || '0') || 0) / (rate || 120);
+  const hasValidAmount =
+    (methodValue?.trim?.()?.length ?? 0) > 0 &&
+    !amountUSDError &&
+    !convertedAmountError &&
+    effectiveUSD > 0 &&
+    effectiveUSD >= minAmountUSD &&
+    (maxAmountUSD == null || effectiveUSD <= maxAmountUSD);
+
   useEffect(() => {
     if (activeCurrency === 'USD') {
       const usdValue = parseFloat(amountUSDValue || '0');
@@ -750,7 +777,7 @@ export default function AddFundsPage() {
                     console.log('Button click ignored - already submitting');
                   }
                 }}
-                disabled={isPending || isSubmitting || !form.formState.isValid || isSubmittingRef.current}
+                disabled={isPending || isSubmitting || !hasValidAmount || isSubmittingRef.current}
                 className="btn btn-primary w-full h-14 text-lg font-bold"
               >
                 {isPending || isSubmitting ? (

@@ -1,11 +1,8 @@
-'use client'
-import React, { useEffect, useState } from 'react';
+'use client';
+
+import React from 'react';
 import { FaShoppingCart, FaServer, FaUsers, FaShareAlt } from 'react-icons/fa';
-import { logger } from '@/lib/utils/logger';
-import {
-  getCachedHomepageStatsFromBrowser,
-  setHomepageStatsInBrowser,
-} from '@/lib/homepage-stats-browser-cache';
+import { useHomepageStats } from '@/hooks/use-homepage-stats';
 
 interface CounterItem {
   iconName: string;
@@ -27,53 +24,7 @@ const iconMap = {
 };
 
 export default function Statistics() {
-  const [counts, setCounts] = useState<{
-    completedOrders: number;
-    activeServices: number;
-    activeUsers: number;
-    activeAffiliateUsers: number;
-    totalOrders: number;
-    totalUsers: number;
-  } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const cached = getCachedHomepageStatsFromBrowser();
-      if (cached) {
-        setCounts(cached);
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/homepage/stats', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        });
-        
-        const json = await res.json();
-        
-        if (!res.ok || !json.success) {
-          logger.error('Statistics: API error response', { response: json });
-          throw new Error(json.error || 'Failed to load homepage stats');
-        }
-        
-        const data = json.data;
-        if (data && typeof data === 'object') {
-          setHomepageStatsInBrowser(data);
-          setCounts(data);
-        }
-      } catch (err: any) {
-        logger.error('Statistics: Error fetching stats', err);
-        setError(err.message || 'Failed to load stats');
-      }
-    };
-
-    fetchStats();
-  }, []);
+  const { data: counts, error } = useHomepageStats();
 
   const dynamicCounterData: CounterItem[] = counterData.map((item) => {
     let countValue = item.count;
@@ -100,7 +51,7 @@ export default function Statistics() {
       <div className="max-w-[1200px] mx-auto px-4">
         {error && (
           <div className="mb-4 text-center text-sm text-red-600">
-            {error}
+            {error.message}
           </div>
         )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">

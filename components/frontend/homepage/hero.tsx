@@ -29,10 +29,7 @@ import {
 } from 'react-icons/fa';
 import useReCAPTCHA from '@/hooks/useReCAPTCHA';
 import { useUserSettings } from '@/hooks/use-user-settings';
-import {
-  getCachedHomepageStatsFromBrowser,
-  setHomepageStatsInBrowser,
-} from '@/lib/homepage-stats-browser-cache';
+import { useHomepageStats } from '@/hooks/use-homepage-stats';
 
 const Hero: React.FC = () => {
 
@@ -67,108 +64,21 @@ const Hero: React.FC = () => {
   const isModerator = userRole === 'moderator';
   const isAdminOrModerator = isAdmin || isModerator;
 
-  const [usersCount, setUsersCount] = useState<number>(0);
-  const [completedOrdersCount, setCompletedOrdersCount] = useState<number>(0);
-  const [totalOrdersCount, setTotalOrdersCount] = useState<number>(0);
-  const [activeUsersCount, setActiveUsersCount] = useState<number>(0);
-  const [statsError, setStatsError] = useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const {
+    data: homepageStats,
+    isLoading: statsLoading,
+    error: statsError,
+  } = useHomepageStats();
+
+  const usersCount = homepageStats?.totalUsers ?? 0;
+  const completedOrdersCount = homepageStats?.completedOrders ?? 0;
+  const totalOrdersCount = homepageStats?.totalOrders ?? 0;
+  const activeUsersCount = homepageStats?.activeUsers ?? 0;
 
   const [userBalance, setUserBalance] = useState<number | null>(null);
   const [activeOrdersCountUser, setActiveOrdersCountUser] = useState<number | null>(null);
   const [userStatsLoading, setUserStatsLoading] = useState<boolean>(false);
   const [userStatsError, setUserStatsError] = useState<string | null>(null);
-
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    return () => { isMountedRef.current = false; };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchHomepageStats = async () => {
-      const cached = getCachedHomepageStatsFromBrowser();
-      if (cached && isMounted && isMountedRef.current) {
-        startTransition(() => {
-          setUsersCount(cached.totalUsers);
-          setCompletedOrdersCount(cached.completedOrders);
-          setTotalOrdersCount(cached.totalOrders);
-          setActiveUsersCount(cached.activeUsers);
-        });
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/homepage/stats', {
-          cache: 'no-store',
-        });
-
-        const json = await res.json();
-
-        if (!res.ok || !json.success) {
-          throw new Error(json.error || json.message || 'Failed to fetch homepage stats');
-        }
-
-        if (!isMounted || !isMountedRef.current) {
-          return;
-        }
-
-        const { totalUsers, completedOrders, activeUsers, totalOrders, activeAffiliateUsers } = json?.data || {};
-
-        const finalUsersCount = typeof totalUsers === 'number' ? totalUsers : (totalUsers === null || totalUsers === undefined ? 0 : Number(totalUsers) || 0);
-        const finalCompletedOrders = typeof completedOrders === 'number' ? completedOrders : (completedOrders === null || completedOrders === undefined ? 0 : Number(completedOrders) || 0);
-        const finalTotalOrders = typeof totalOrders === 'number' ? totalOrders : (totalOrders === null || totalOrders === undefined ? 0 : Number(totalOrders) || 0);
-        const finalActiveUsers = typeof activeUsers === 'number' ? activeUsers : (activeUsers === null || activeUsers === undefined ? 0 : Number(activeUsers) || 0);
-        const finalActiveAffiliateUsers = typeof activeAffiliateUsers === 'number' ? activeAffiliateUsers : (activeAffiliateUsers === null || activeAffiliateUsers === undefined ? 0 : Number(activeAffiliateUsers) || 0);
-
-        const data = {
-          completedOrders: finalCompletedOrders,
-          activeServices: typeof json?.data?.activeServices === 'number' ? json.data.activeServices : 0,
-          activeUsers: finalActiveUsers,
-          activeAffiliateUsers: finalActiveAffiliateUsers,
-          totalUsers: finalUsersCount,
-          totalOrders: finalTotalOrders,
-        };
-        setHomepageStatsInBrowser(data);
-
-        startTransition(() => {
-          setUsersCount(finalUsersCount);
-          setCompletedOrdersCount(finalCompletedOrders);
-          setTotalOrdersCount(finalTotalOrders);
-          setActiveUsersCount(finalActiveUsers);
-        });
-
-        if (process.env.NODE_ENV === 'development') {
-          setDebugInfo({
-            apiResponse: json,
-            extracted: { totalUsers, completedOrders, activeUsers, totalOrders },
-            final: {
-              finalUsersCount,
-              finalTotalOrders,
-              finalActiveUsers,
-            },
-          });
-        }
-      } catch (err: any) {
-        if (!isMounted || !isMountedRef.current) return;
-        setStatsError(err.message || 'Failed to fetch homepage stats');
-
-        startTransition(() => {
-          setUsersCount(0);
-          setCompletedOrdersCount(0);
-          setTotalOrdersCount(0);
-          setActiveUsersCount(0);
-        });
-      }
-    };
-
-    fetchHomepageStats();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isAuthenticated || isAdmin) return;
@@ -466,14 +376,6 @@ const Hero: React.FC = () => {
             </div>
           </div>
 
-          {process.env.NODE_ENV === 'development' && debugInfo && (
-            <div className="mt-4 p-4 bg-yellow-100 dark:bg-yellow-900/20 rounded text-xs">
-              <strong>Debug Info:</strong>
-              <pre className="mt-2 overflow-auto max-h-40">
-                {JSON.stringify(debugInfo, null, 2)}
-              </pre>
-            </div>
-          )}
           <div className="w-full lg:flex lg:justify-center">
             {isLoading && <LoadingContent />}
             {!isLoading && isAuthenticated && <AuthenticatedUserContent />}

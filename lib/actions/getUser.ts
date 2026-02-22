@@ -120,7 +120,7 @@ export async function getUserDetails() {
           createdAt: new Date(),
           updatedAt: new Date(),
           timezone: 'Asia/Dhaka',
-          timeFormat: '24',
+          timeFormat: '12',
           addFund: []
         };
       }

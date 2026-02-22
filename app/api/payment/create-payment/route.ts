@@ -1,4 +1,4 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { convertToUSD } from '@/lib/currency-utils';
 import { getPaymentGatewayName, getPaymentGatewayExchangeRate } from '@/lib/payment-gateway-config';
@@ -193,17 +193,6 @@ export async function POST(req: NextRequest) {
             await sendTransactionPendingNotification(session.user.id, payment.id);
           } catch (notifError) {
             console.error('Error sending transaction pending notification:', notifError);
-          }
-
-          try {
-            const { sendAdminPendingTransactionNotification } = await import('@/lib/notifications/admin-notifications');
-            await sendAdminPendingTransactionNotification(
-              payment.id,
-              amountUSDConverted,
-              session.user.name || session.user.email || 'User'
-            );
-          } catch (adminNotifError) {
-            console.error('Error sending admin pending transaction notification:', adminNotifError);
           }
         } catch (createError: any) {
           console.error('Error creating payment record:', createError);

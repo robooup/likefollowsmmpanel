@@ -28,6 +28,22 @@ const NOTIFICATION_PERMISSION_MAP: Record<string, string | null> = {
   'announcement': null,
 };
 
+const NOTIFICATION_SETTING_MAP: Record<string, string> = {
+  'apiBalanceAlerts': 'adminNotifApiBalanceAlerts',
+  'supportTickets': 'adminNotifSupportTickets',
+  'newMessages': 'adminNotifNewMessages',
+  'newManualServiceOrders': 'adminNotifNewManualServiceOrders',
+  'failOrders': 'adminNotifFailOrders',
+  'refillRequests': 'adminNotifNewManualRefillRequests',
+  'cancelRequests': 'adminNotifNewManualCancelRequests',
+  'newUsers': 'adminNotifNewUsers',
+  'userActivityLogs': 'adminNotifUserActivityLogs',
+  'pendingTransactions': 'adminNotifPendingTransactions',
+  'apiSyncLogs': 'adminNotifApiSyncLogs',
+  'newChildPanelOrders': 'adminNotifNewChildPanelOrders',
+  'announcement': 'adminNotifAnnouncement',
+};
+
 async function createNotification(data: NotificationData): Promise<void> {
   try {
     const notification = await db.notifications.create({
@@ -60,52 +76,6 @@ async function createNotification(data: NotificationData): Promise<void> {
   }
 }
 
-async function shouldSendAdminNotification(
-  notificationType: 'apiBalanceAlerts' | 'supportTickets' | 'newMessages' | 'newManualServiceOrders' | 'failOrders' | 'refillRequests' | 'cancelRequests' | 'newUsers' | 'userActivityLogs' | 'pendingTransactions' | 'apiSyncLogs' | 'newChildPanelOrders' | 'announcement'
-): Promise<boolean> {
-  try {
-    const integrationSettings = await db.integrationSettings.findFirst();
-    
-    if (!integrationSettings) {
-      return false;
-    }
-
-    switch (notificationType) {
-      case 'apiBalanceAlerts':
-        return integrationSettings.adminNotifApiBalanceAlerts ?? false;
-      case 'supportTickets':
-        return integrationSettings.adminNotifSupportTickets ?? false;
-      case 'newMessages':
-        return integrationSettings.adminNotifNewMessages ?? false;
-      case 'newManualServiceOrders':
-        return integrationSettings.adminNotifNewManualServiceOrders ?? false;
-      case 'failOrders':
-        return integrationSettings.adminNotifFailOrders ?? false;
-      case 'refillRequests':
-        return integrationSettings.adminNotifNewManualRefillRequests ?? false;
-      case 'cancelRequests':
-        return integrationSettings.adminNotifNewManualCancelRequests ?? false;
-      case 'newUsers':
-        return integrationSettings.adminNotifNewUsers ?? false;
-      case 'userActivityLogs':
-        return integrationSettings.adminNotifUserActivityLogs ?? false;
-      case 'pendingTransactions':
-        return integrationSettings.adminNotifPendingTransactions ?? false;
-      case 'apiSyncLogs':
-        return integrationSettings.adminNotifApiSyncLogs ?? false;
-      case 'newChildPanelOrders':
-        return integrationSettings.adminNotifNewChildPanelOrders ?? false;
-      case 'announcement':
-        return integrationSettings.adminNotifAnnouncement ?? false;
-      default:
-        return false;
-    }
-  } catch (error) {
-    console.error('Error checking admin notification settings:', error);
-    return false;
-  }
-}
-
 async function sendAdminNotification(
   notificationType: 'apiBalanceAlerts' | 'supportTickets' | 'newMessages' | 'newManualServiceOrders' | 'failOrders' | 'refillRequests' | 'cancelRequests' | 'newUsers' | 'userActivityLogs' | 'pendingTransactions' | 'apiSyncLogs' | 'newChildPanelOrders' | 'announcement',
   title: string,
@@ -115,10 +85,14 @@ async function sendAdminNotification(
   targetRoles?: string[]
 ): Promise<void> {
   try {
-    const shouldSend = await shouldSendAdminNotification(notificationType);
-    
-    if (!shouldSend) {
-      console.log(`[ADMIN NOTIFICATION] ${notificationType} not sent - settings disabled`);
+    const settings = await db.integrationSettings.findFirst();
+    const settingKey = NOTIFICATION_SETTING_MAP[notificationType];
+    if (settingKey && settings) {
+      const enabled = (settings as Record<string, unknown>)[settingKey] === true;
+      if (!enabled) {
+        return;
+      }
+    } else if (settingKey && !settings) {
       return;
     }
 
@@ -319,13 +293,13 @@ export async function sendAdminCancelRequestFailedNotification(
 
 export async function sendAdminNewUserNotification(
   userId: number,
-  userName: string,
+  username: string,
   userEmail: string
 ): Promise<void> {
   await sendAdminNotification(
     'newUsers',
-    `New User Registered @${userName}`,
-    `@${userName} has registered.`,
+    `New User Registered @${username}`,
+    `@${username} has registered.`,
     `/admin/users`,
     'user'
   );
@@ -340,6 +314,20 @@ export async function sendAdminPendingTransactionNotification(
     'pendingTransactions',
     `Pending Transaction #${transactionId}`,
     `@${userName} has a pending transaction of $${amount.toFixed(2)}.`,
+    `/admin/transactions`,
+    'payment'
+  );
+}
+
+export async function sendAdminNewTransactionNotification(
+  transactionId: number,
+  amount: number,
+  userName: string
+): Promise<void> {
+  await sendAdminNotification(
+    'pendingTransactions',
+    `New Transaction #${transactionId}`,
+    `@${userName} successfully added $${amount.toFixed(2)} to their balance.`,
     `/admin/transactions`,
     'payment'
   );

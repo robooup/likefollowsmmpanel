@@ -23,7 +23,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { FaDesktop, FaMoon, FaSun } from 'react-icons/fa';
+import { FaMoon, FaSun } from 'react-icons/fa';
 
 const Avatar = ({
   className,
@@ -163,7 +163,6 @@ const ThemeToggle = ({ isMobile = false }: { isMobile?: boolean }) => {
   const themeOptions = [
     { key: 'light', label: 'Light', icon: FaSun },
     { key: 'dark', label: 'Dark', icon: FaMoon },
-    { key: 'system', label: 'System', icon: FaDesktop },
   ];
 
   if (isMobile) {
@@ -270,7 +269,7 @@ const ProfileCard = ({
     loadUserData();
   }, [currentUser?.id, user?.id, dispatch]);
 
-  const { data: userStatsResponse, isLoading: isLoadingStats } = useGetUserStatsQuery(undefined);
+  const { data: userStatsResponse, isLoading: isLoadingStats, refetch: refetchUserStats } = useGetUserStatsQuery(undefined);
   const balance = userStatsResponse?.data?.balance || userData?.balance || 0;
   const userStoredCurrency = userStatsResponse?.data?.currency || userData?.currency || 'USD';
   const [isInitialLoading, setIsInitialLoading] = useState(false);
@@ -289,11 +288,17 @@ const ProfileCard = ({
       }
     };
 
+    const handleBalanceUpdated = () => {
+      refetchUserStats();
+    };
+
     window.addEventListener('avatarUpdated', handleAvatarUpdate);
+    window.addEventListener('balanceUpdated', handleBalanceUpdated);
     return () => {
       window.removeEventListener('avatarUpdated', handleAvatarUpdate);
+      window.removeEventListener('balanceUpdated', handleBalanceUpdated);
     };
-  }, [dispatch]);
+  }, [dispatch, refetchUserStats]);
   
   useEffect(() => {
     if (isOpen) {

@@ -71,56 +71,23 @@ export async function GET(req: NextRequest) {
 
     console.log('Prisma where condition:', JSON.stringify(whereCondition, null, 2));
 
-    const cancelRequestsResult = await db.cancelRequests.findMany({
+    const cancelRequestsWithRelations = await db.cancelRequests.findMany({
       where: whereCondition,
       orderBy: {
         createdAt: 'desc'
       },
       skip: (page - 1) * limit,
-      take: limit
-    });
-
-    const cancelRequestsWithRelations = await Promise.all(
-      cancelRequestsResult.map(async (request) => {
-        try {
-          const [order, user] = await Promise.all([
-            db.newOrders.findUnique({
-              where: { id: request.orderId },
-              include: {
-                service: true,
-                category: true
-              }
-            }).catch((err) => {
-              console.error(`Error loading order ${request.orderId} for cancel request ${request.id}:`, err);
-              return null;
-            }),
-            db.users.findUnique({
-              where: { id: request.userId }
-            }).catch((err) => {
-              console.error(`Error loading user ${request.userId} for cancel request ${request.id}:`, err);
-              return null;
-            })
-          ]);
-
-          if (order && (!order.service || !order.category)) {
-            console.warn(`Order ${order.id} is missing service or category relation for cancel request ${request.id}`);
+      take: limit,
+      include: {
+        order: {
+          include: {
+            service: true,
+            category: true
           }
-
-          return {
-            ...request,
-            order,
-            user
-          };
-        } catch (error) {
-          console.error(`Error loading relations for cancel request ${request.id}:`, error);
-          return {
-            ...request,
-            order: null,
-            user: null
-          };
-        }
-      })
-    );
+        },
+        user: true
+      }
+    });
 
     console.log(`Found ${cancelRequestsWithRelations.length} cancel requests from database`);
     

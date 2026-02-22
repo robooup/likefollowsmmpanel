@@ -105,7 +105,7 @@ export const register = async (values: any & { recaptchaToken?: string }) => {
       const { sendAdminNewUserNotification } = await import('@/lib/notifications/admin-notifications');
       await sendAdminNewUserNotification(
         newUser.id,
-        newUser.name || newUser.username || 'User',
+        newUser.username || newUser.name || 'User',
         newUser.email || ''
       );
     } catch (notificationError) {

@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
 
     const [orderYears, paymentYears] = await Promise.all([
       db.$queryRaw<Array<{ year: bigint }>>`
-        SELECT DISTINCT YEAR(createdAt) as year
+        SELECT DISTINCT EXTRACT(YEAR FROM "createdAt")::bigint as year
         FROM new_orders
         ORDER BY year DESC
       `,
       db.$queryRaw<Array<{ year: bigint }>>`
-        SELECT DISTINCT YEAR(createdAt) as year
+        SELECT DISTINCT EXTRACT(YEAR FROM "createdAt")::bigint as year
         FROM add_funds
         WHERE status = 'Success'
         ORDER BY year DESC

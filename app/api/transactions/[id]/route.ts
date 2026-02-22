@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { resolveEmailContent } from '@/lib/email-templates/resolve-email-content';
 import { templateContextFromUser } from '@/lib/email-templates/replace-template-variables';
 import { sendMail } from '@/lib/nodemailer';
+import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
+import { sendAdminNewTransactionNotification } from '@/lib/notifications/admin-notifications';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PATCH(
@@ -182,6 +184,24 @@ export async function PATCH(
       }
     } catch (emailError) {
       console.error('Error sending notification emails:', emailError);
+    }
+
+    if (updateData.status === 'Success' && transaction.status !== 'Success' && transaction.status !== 'approved') {
+      const usdAmount = typeof transaction.amount === 'object' && transaction.amount !== null
+        ? Number(transaction.amount)
+        : Number(transaction.amount || 0);
+      try {
+        await sendTransactionSuccessNotification(transaction.userId, transactionId, usdAmount);
+      } catch (notifError) {
+        console.error('Error sending transaction success notification:', notifError);
+      }
+      try {
+        const userName = (transaction.user as { username?: string; name?: string })?.username
+          ?? (transaction.user as { username?: string; name?: string })?.name ?? 'User';
+        await sendAdminNewTransactionNotification(transactionId, usdAmount, userName);
+      } catch (adminNotifError) {
+        console.error('Error sending admin new transaction notification:', adminNotifError);
+      }
     }
 
     return NextResponse.json({

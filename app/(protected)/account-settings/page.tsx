@@ -126,7 +126,7 @@ const ProfilePage = () => {
   const [isUserDataLoading, setIsUserDataLoading] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [selectedTimezone, setSelectedTimezone] = useState('Asia/Dhaka');
-  const [selectedTimeFormat, setSelectedTimeFormat] = useState<'12' | '24'>('24');
+  const [selectedTimeFormat, setSelectedTimeFormat] = useState<'12' | '24'>('12');
   const [showApiKey, setShowApiKey] = useState(false);
 
   const [toast, setToast] = useState<{
@@ -233,10 +233,10 @@ const ProfilePage = () => {
           setSelectedLanguage((userData as any).language || 'en');
 
           const userTimezone = (userData as any).timezone;
-          const userTimeFormat = (userData as any).timeFormat || '24';
+          const userTimeFormat = (userData as any).timeFormat || '12';
 
           setSelectedTimezone(userTimezone || 'Asia/Dhaka');
-          setSelectedTimeFormat((userTimeFormat === '12' || userTimeFormat === '24') ? userTimeFormat : '24');
+          setSelectedTimeFormat((userTimeFormat === '12' || userTimeFormat === '24') ? userTimeFormat : '12');
 
           setProfileData({
             fullName: userData.name || '',

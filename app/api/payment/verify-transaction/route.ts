@@ -3,6 +3,8 @@ import { resolveEmailContent } from '@/lib/email-templates/resolve-email-content
 import { templateContextFromUser } from '@/lib/email-templates/replace-template-variables';
 import { sendMail } from '@/lib/nodemailer';
 import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
+import { ActivityLogger, getClientIP } from '@/lib/activity-logger';
+import { isPaymentGatewaySandbox } from '@/lib/payment-gateway-config';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -111,8 +113,9 @@ export async function POST(req: NextRequest) {
 
       if (isSuccessful && payment.user) {
         try {
-          await db.$transaction(async (prisma) => {
-            await prisma.addFunds.update({
+          const isSandbox = await isPaymentGatewaySandbox();
+          if (isSandbox) {
+            await db.addFunds.update({
               where: { invoiceId: invoice_id },
               data: {
                 status: 'Success',
@@ -120,50 +123,87 @@ export async function POST(req: NextRequest) {
                 paymentMethod: verificationData?.payment_method || payment.paymentMethod || 'UddoktaPay',
               },
             });
+            console.log(`Sandbox: Payment ${invoice_id} marked Success without adding balance (verify-transaction).`);
+          } else {
+            await db.$transaction(async (prisma) => {
+              await prisma.addFunds.update({
+                where: { invoiceId: invoice_id },
+                data: {
+                  status: 'Success',
+                  transactionId: finalTransactionId || payment.transactionId,
+                  paymentMethod: verificationData?.payment_method || payment.paymentMethod || 'UddoktaPay',
+                },
+              });
 
-            const originalAmount = Number(payment.amount) || 0;
+              const originalAmount = Number(payment.amount) || 0;
 
-            const userSettings = await prisma.userSettings.findFirst();
-            let bonusAmount = 0;
+              const userSettings = await prisma.userSettings.findFirst();
+              let bonusAmount = 0;
 
-            if (userSettings && userSettings.bonusPercentage > 0) {
-              bonusAmount =
-                (originalAmount * userSettings.bonusPercentage) / 100;
-            }
-
-            const totalAmountToAdd = originalAmount + bonusAmount;
-
-            const user = await prisma.users.update({
-              where: { id: payment.userId },
-              data: {
-                balance: { increment: totalAmountToAdd },
-                balanceUSD: { increment: originalAmount },
-                total_deposit: { increment: originalAmount },
-              },
-            });
-
-            console.log(
-              `User ${payment.userId} balance updated. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`
-            );
-
-            const updatedPayment = await prisma.addFunds.findUnique({
-              where: { invoiceId: invoice_id },
-            });
-
-            if (updatedPayment) {
-              try {
-                await sendTransactionSuccessNotification(
-                  payment.userId,
-                  updatedPayment.id,
-                  Number(payment.amount)
-                );
-              } catch (notifError) {
-                console.error('Error sending transaction success notification:', notifError);
+              if (userSettings && userSettings.bonusPercentage > 0) {
+                bonusAmount =
+                  (originalAmount * userSettings.bonusPercentage) / 100;
               }
-            }
-          });
 
-          if (payment.user.email) {
+              const totalAmountToAdd = originalAmount + bonusAmount;
+
+              const user = await prisma.users.update({
+                where: { id: payment.userId },
+                data: {
+                  balance: { increment: totalAmountToAdd },
+                  balanceUSD: { increment: originalAmount },
+                  total_deposit: { increment: originalAmount },
+                },
+              });
+
+              console.log(
+                `User ${payment.userId} balance updated. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`
+              );
+
+              const updatedPayment = await prisma.addFunds.findUnique({
+                where: { invoiceId: invoice_id },
+              });
+
+              if (updatedPayment) {
+                try {
+                  await sendTransactionSuccessNotification(
+                    payment.userId,
+                    updatedPayment.id,
+                    Number(payment.amount)
+                  );
+                } catch (notifError) {
+                  console.error('Error sending transaction success notification:', notifError);
+                }
+              }
+            });
+
+            try {
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              const method = (payment as any).paymentMethod ?? 'UddoktaPay';
+              const amount = Number(payment.amount) || 0;
+              await ActivityLogger.fundAdded(
+                payment.userId,
+                username,
+                amount,
+                'USD',
+                method,
+                getClientIP(req)
+              );
+            } catch (logError) {
+              console.error('Error logging fund_added activity:', logError);
+            }
+
+            try {
+              const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              const amount = Number(payment.amount) || 0;
+              await sendAdminNewTransactionNotification(payment.id, amount, username);
+            } catch (adminNotifError) {
+              console.error('Error sending admin new transaction notification:', adminNotifError);
+            }
+          }
+
+          if (payment.user.email && !isSandbox) {
             const emailData = await resolveEmailContent(
               'transaction_payment_success',
               {

@@ -100,8 +100,7 @@ const CustomCodesPage = () => {
 
       if (response.ok) {
         showToast('Custom codes settings saved successfully!', 'success');
-
-        window.dispatchEvent(new CustomEvent('customCodesUpdated'));
+        (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('custom-codes');
       } else {
         showToast('Failed to save custom codes settings', 'error');
       }

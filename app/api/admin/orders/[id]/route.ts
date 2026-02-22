@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { serializeOrder } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendOrderStatusChangedNotification } from '@/lib/notifications/user-notifications';
+import { updateServiceAvgTime } from '@/lib/utils/service-avg-time';
 
 export async function GET(
   req: NextRequest,
@@ -351,6 +352,14 @@ export async function PUT(
       ).catch(err => {
         console.error('Failed to send order status changed notification:', err);
       });
+    }
+
+    if (body.status === 'completed') {
+      try {
+        await updateServiceAvgTime(updatedOrder.serviceId);
+      } catch (avgErr) {
+        console.error('Error updating service avg_time after order update:', avgErr);
+      }
     }
     
     console.log(`Admin ${session.user.email} updated order ${id}`, {

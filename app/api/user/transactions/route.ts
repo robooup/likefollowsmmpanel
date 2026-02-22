@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { resolveEmailContent } from '@/lib/email-templates/resolve-email-content';
 import { templateContextFromUser } from '@/lib/email-templates/replace-template-variables';
 import { sendMail } from '@/lib/nodemailer';
+import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -204,6 +205,9 @@ export async function GET(request: NextRequest) {
           if (Object.keys(updateData).length > 0) {
 
             if (updateData.status === 'Success' && transaction.status !== 'Success') {
+              const { isPaymentGatewaySandbox } = await import('@/lib/payment-gateway-config');
+              const isSandbox = await isPaymentGatewaySandbox();
+
               await db.$transaction(async (prisma) => {
                 const paymentRecord = await prisma.addFunds.findUnique({
                   where: transaction.invoiceId
@@ -212,7 +216,7 @@ export async function GET(request: NextRequest) {
                   include: { user: true }
                 });
 
-                if (paymentRecord && paymentRecord.user) {
+                if (paymentRecord && paymentRecord.user && !isSandbox) {
                   const originalAmount = Number(paymentRecord.amount) || 0;
 
                   const userSettings = await prisma.userSettings.findFirst();
@@ -259,6 +263,10 @@ export async function GET(request: NextRequest) {
                       console.error('Error sending payment success email:', emailError);
                     }
                   }
+                } else if (isSandbox && paymentRecord) {
+                  if (process.env.NODE_ENV === 'development') {
+                    console.log(`Sandbox: Transaction ${transaction.id} marked Success without adding balance (user/transactions refresh).`);
+                  }
                 }
 
                 await prisma.addFunds.update({
@@ -268,6 +276,24 @@ export async function GET(request: NextRequest) {
                   data: updateData,
                 });
               });
+
+              if (!isSandbox) {
+                try {
+                  const amount = Number(transaction.amount) || 0;
+                  await sendTransactionSuccessNotification(transaction.userId, transaction.id, amount);
+                } catch (notifError) {
+                  console.error('Error sending transaction success notification after refresh:', notifError);
+                }
+                try {
+                  const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+                  const userName = (transaction.user as { username?: string; name?: string })?.username
+                    ?? (transaction.user as { username?: string; name?: string })?.name ?? 'User';
+                  const amount = Number(transaction.amount) || 0;
+                  await sendAdminNewTransactionNotification(transaction.id, amount, userName);
+                } catch (adminNotifError) {
+                  console.error('Error sending admin new transaction notification:', adminNotifError);
+                }
+              }
             } else {
 
               await db.addFunds.update({

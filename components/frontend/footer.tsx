@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
+import type { SettingsScope } from '@/lib/settings-invalidation';
 import {
   FaEnvelope,
   FaFacebookF,
@@ -18,36 +20,49 @@ const Footer = () => {
   const [siteDarkLogo, setSiteDarkLogo] = useState<string>('');
   const [siteIcon, setSiteIcon] = useState<string>('/favicon.png');
 
-  useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const response = await fetch('/api/public/general-settings');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.generalSettings) {
-            if (data.generalSettings.supportEmail) {
-              setSupportEmail(data.generalSettings.supportEmail);
-            }
-            if (data.generalSettings.whatsappNumber) {
-              setWhatsappNumber(data.generalSettings.whatsappNumber);
-            }
-            if (data.generalSettings.siteLogo && data.generalSettings.siteLogo.trim() !== '') {
-              setSiteLogo(data.generalSettings.siteLogo);
-            }
-            if (data.generalSettings.siteDarkLogo && data.generalSettings.siteDarkLogo.trim() !== '') {
-              setSiteDarkLogo(data.generalSettings.siteDarkLogo);
-            }
-            if (data.generalSettings.siteIcon && data.generalSettings.siteIcon.trim() !== '') {
-              setSiteIcon(data.generalSettings.siteIcon);
-            }
+  const fetchSettings = useCallback(async () => {
+    try {
+      const response = await fetch('/api/public/general-settings', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.generalSettings) {
+          if (data.generalSettings.supportEmail) {
+            setSupportEmail(data.generalSettings.supportEmail);
+          }
+          if (data.generalSettings.whatsappNumber) {
+            setWhatsappNumber(data.generalSettings.whatsappNumber);
+          }
+          if (data.generalSettings.siteLogo && data.generalSettings.siteLogo.trim() !== '') {
+            setSiteLogo(data.generalSettings.siteLogo);
+          }
+          if (data.generalSettings.siteDarkLogo && data.generalSettings.siteDarkLogo.trim() !== '') {
+            setSiteDarkLogo(data.generalSettings.siteDarkLogo);
+          }
+          if (data.generalSettings.siteIcon && data.generalSettings.siteIcon.trim() !== '') {
+            setSiteIcon(data.generalSettings.siteIcon);
           }
         }
-      } catch (error) {
-        console.error('Error fetching settings:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  useEffect(() => {
+    const handleSettingsInvalidated = (e: Event) => {
+      const ce = e as CustomEvent<{ scope?: SettingsScope }>;
+      const scope = ce.detail?.scope ?? 'all';
+      if (scope === 'general' || scope === 'meta' || scope === 'all') {
+        fetchSettings();
       }
     };
-    fetchSettings();
-  }, []);
+    window.addEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+    return () => window.removeEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
+  }, [fetchSettings]);
 
   const formatWhatsAppLink = (phoneNumber: string): string => {
     if (!phoneNumber || phoneNumber.trim() === '') {

@@ -1,6 +1,7 @@
 import '@/assets/styles/globals.css';
 import { auth } from '@/auth';
 import { CustomCodesInjector } from '@/components/custom-codes-injector';
+import { SettingsInvalidationListener } from '@/components/settings-invalidation-listener';
 import AnalyticsInjector from '@/components/analytics-injector';
 import OneSignalInjector from '@/components/onesignal-injector';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -19,6 +20,7 @@ import { Nunito } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 import StoreProvider from './store-provider';
+import { QueryProvider } from '@/components/providers/query-provider';
 import UserSwitchWrapper from '@/components/admin/user-switch-wrapper';
 import FaviconUpdater from '@/components/favicon-updater';
 
@@ -111,14 +113,16 @@ export default async function RootLayout({
           refetchWhenOffline={false}
         >
           <StoreProvider>
+            <QueryProvider>
             <ThemeProvider
               attribute="class"
               defaultTheme="light"
-              enableSystem
+              enableSystem={false}
               disableTransitionOnChange={false}
             >
               <Toaster richColors position="bottom-right" />
               <ServiceWorkerRegistration />
+              <SettingsInvalidationListener />
               <CustomCodesInjector />
               <AnalyticsInjector />
               <OneSignalInjector
@@ -139,6 +143,7 @@ export default async function RootLayout({
                 </CurrencyProvider>
               </AppNameProvider>
             </ThemeProvider>
+            </QueryProvider>
           </StoreProvider>
         </SessionProvider>
       </body>

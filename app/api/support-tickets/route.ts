@@ -78,28 +78,60 @@ async function processRefillRequest(orderIds: string[], userId: number) {
     let failureCount = 0;
     const results = [];
 
-    for (const orderId of orderIds) {
-      try {
-        const order = await db.newOrders.findUnique({
-          where: { id: parseInt(orderId) },
-          select: {
-            id: true,
-            userId: true,
-            status: true,
-            updatedAt: true,
-            providerOrderId: true,
-            service: {
-              select: {
-                id: true,
-                name: true,
-                refill: true,
-                refillDays: true,
-                providerId: true,
-                providerServiceId: true
+    const ids = orderIds.map((id) => parseInt(id)).filter((n) => !isNaN(n));
+    const [ordersList, existingRefills, userForNotification] = await Promise.all([
+      ids.length > 0
+        ? db.newOrders.findMany({
+            where: { id: { in: ids } },
+            select: {
+              id: true,
+              userId: true,
+              status: true,
+              updatedAt: true,
+              providerOrderId: true,
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  refill: true,
+                  refillDays: true,
+                  providerId: true,
+                  providerServiceId: true
+                }
               }
             }
-          }
-        });
+          })
+        : [],
+      ids.length > 0
+        ? db.refillRequests.findMany({
+            where: {
+              orderId: { in: ids },
+              status: { in: ['pending', 'approved'] }
+            },
+            select: { orderId: true }
+          })
+        : [],
+      db.users.findUnique({
+        where: { id: userId },
+        select: { username: true, name: true }
+      })
+    ]);
+
+    const orderMap = new Map(ordersList.map((o) => [o.id, o]));
+    const existingRefillOrderIds = new Set(existingRefills.map((r) => r.orderId));
+    const providerIds = [...new Set(ordersList.map((o) => o.service?.providerId).filter((id): id is number => id != null))];
+    const providersList = providerIds.length > 0
+      ? await db.apiProviders.findMany({
+          where: { id: { in: providerIds } },
+          select: { id: true, name: true, api_url: true, api_key: true, status: true }
+        })
+      : [];
+    const providerMap = new Map(providersList.map((p) => [p.id, p]));
+
+    for (const orderId of orderIds) {
+      try {
+        const orderIdInt = parseInt(orderId);
+        const order = orderMap.get(orderIdInt);
 
         if (!order || order.userId !== userId) {
           results.push({ orderId, success: false, message: 'Order not found or access denied' });
@@ -119,16 +151,7 @@ async function processRefillRequest(orderIds: string[], userId: number) {
           continue;
         }
 
-        const existingRequest = await db.refillRequests.findFirst({
-          where: {
-            orderId: parseInt(orderId),
-            status: {
-              in: ['pending', 'approved']
-            }
-          }
-        });
-
-        if (existingRequest) {
+        if (existingRefillOrderIds.has(orderIdInt)) {
           results.push({ orderId, success: false, message: 'A refill request already exists for this order' });
           failureCount++;
           continue;
@@ -151,9 +174,7 @@ async function processRefillRequest(orderIds: string[], userId: number) {
 
         if (order.service.providerId && order.providerOrderId) {
           try {
-            const provider = await db.apiProviders.findUnique({
-              where: { id: order.service.providerId }
-            });
+            const provider = providerMap.get(order.service.providerId);
 
             if (provider && provider.status === 'active') {
               const providerEligibility = await checkProviderRefillEligibility(
@@ -183,13 +204,9 @@ async function processRefillRequest(orderIds: string[], userId: number) {
 
         try {
           const { sendAdminNewRefillRequestNotification } = await import('@/lib/notifications/admin-notifications');
-          const user = await db.users.findUnique({
-            where: { id: userId },
-            select: { username: true, name: true }
-          });
           await sendAdminNewRefillRequestNotification(
             parseInt(orderId),
-            user?.username || user?.name || 'User'
+            userForNotification?.username || userForNotification?.name || 'User'
           );
         } catch (notificationError) {
           console.error('Error sending admin new refill request notification:', notificationError);
@@ -197,9 +214,7 @@ async function processRefillRequest(orderIds: string[], userId: number) {
 
         if (order.service.providerId && order.providerOrderId) {
           try {
-            const provider = await db.apiProviders.findUnique({
-              where: { id: order.service.providerId }
-            });
+            const provider = providerMap.get(order.service.providerId);
 
             if (provider && provider.status === 'active') {
               const providerOrderId = order.providerOrderId;

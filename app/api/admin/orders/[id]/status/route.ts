@@ -1,9 +1,10 @@
-﻿import { auth } from '@/auth';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { serializeOrder } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { updateAffiliateCommissionForOrder } from '@/lib/affiliate-commission-helper';
 import { sendOrderStatusChangedNotification } from '@/lib/notifications/user-notifications';
+import { updateServiceAvgTime } from '@/lib/utils/service-avg-time';
 
 export async function PUT(
   req: NextRequest,
@@ -400,6 +401,14 @@ export async function PATCH(
       ).catch(err => {
         console.error('Failed to send order status changed notification:', err);
       });
+    }
+
+    if (status === 'completed') {
+      try {
+        await updateServiceAvgTime(updatedOrder.serviceId);
+      } catch (avgErr) {
+        console.error('Error updating service avg_time after status change:', avgErr);
+      }
     }
 
     return NextResponse.json({

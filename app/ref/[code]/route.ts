@@ -3,7 +3,6 @@ import { db } from '@/lib/db'
 import crypto from 'crypto'
 import { getModuleSettings } from '@/lib/utils/module-settings'
 
-/** Referral link handler: /ref/REF123 - cleaner URL for sharing (no /api/ in path) */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ code: string }> }) {
   try {
     const moduleSettings = await getModuleSettings(true);

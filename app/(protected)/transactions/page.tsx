@@ -3,7 +3,7 @@
 import { useCurrency } from '@/contexts/currency-context';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSelector } from 'react-redux';
 import { getUserDetails } from '@/lib/actions/getUser';
@@ -143,13 +143,32 @@ export default function TransactionsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [hasShownPaymentToast, setHasShownPaymentToast] = useState(false);
+  const paymentToastHandledRef = useRef(false);
+  const lastToastRef = useRef<{ message: string; type: string; at: number } | null>(null);
+  const TOAST_DEBOUNCE_MS = 2000;
 
   const showToast = (
     message: string,
     type: 'success' | 'error' | 'info' | 'pending' | 'warning' = 'success'
   ) => {
+    const now = Date.now();
+    const last = lastToastRef.current;
+    if (last && last.message === message && last.type === type && now - last.at < TOAST_DEBOUNCE_MS) {
+      return;
+    }
+    lastToastRef.current = { message, type, at: now };
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  const showPaymentSuccessToast = (sandbox: boolean) => {
+    const message = sandbox
+      ? 'Payment completed, but the balance was not added because this is a sandbox transaction.'
+      : 'Payment completed successfully!';
+    showToast(message, sandbox ? 'warning' : 'success');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('balanceUpdated'));
+    }
   };
 
   useEffect(() => {
@@ -242,14 +261,34 @@ export default function TransactionsPage() {
     });
   };
 
+  const PAYMENT_TOAST_KEY = 'transactions_payment_toast_at';
+  const PAYMENT_TOAST_DEBOUNCE_MS = 5000;
+
   useEffect(() => {
-    if (typeof window === 'undefined' || hasShownPaymentToast) return;
+    if (typeof window === 'undefined' || hasShownPaymentToast || paymentToastHandledRef.current) return;
 
     const invoiceId = searchParams.get('invoice_id');
     const paymentStatus = searchParams.get('payment');
+    const hasPaymentParams = Boolean(invoiceId || paymentStatus);
+
+    if (!hasPaymentParams) {
+      try {
+        sessionStorage.removeItem(PAYMENT_TOAST_KEY);
+      } catch (_) {}
+      return;
+    }
+
+    const now = Date.now();
+    try {
+      const lastAt = sessionStorage.getItem(PAYMENT_TOAST_KEY);
+      if (lastAt && now - Number(lastAt) < PAYMENT_TOAST_DEBOUNCE_MS) return;
+      sessionStorage.setItem(PAYMENT_TOAST_KEY, String(now));
+    } catch (_) {}
+
+    paymentToastHandledRef.current = true;
+    setHasShownPaymentToast(true);
 
     if (invoiceId) {
-      setHasShownPaymentToast(true);
 
       setTimeout(async () => {
         try {
@@ -310,6 +349,8 @@ export default function TransactionsPage() {
             const paymentStatusFromApi = verifyData.payment?.status;
             const topLevelStatus = verifyData.status;
             const actualStatus = paymentStatusFromApi || topLevelStatus;
+            const statusUpper = String(actualStatus || topLevelStatus || '').toUpperCase();
+            const isSuccess = statusUpper === 'SUCCESS' || statusUpper === 'COMPLETED';
 
             const paymentData = verifyData.payment || {};
             const gatewayInvoiceId = paymentData.invoice_id || invoiceId;
@@ -328,6 +369,7 @@ export default function TransactionsPage() {
               paymentStatus: paymentStatusFromApi,
               topLevelStatus,
               actualStatus,
+              isSuccess,
               transaction_id: apiTransactionId,
               payment_method: apiPaymentMethod,
               amount: paymentAmount,
@@ -348,22 +390,36 @@ export default function TransactionsPage() {
               sessionStorage.setItem('payment_method', apiPaymentMethod);
             }
 
-            if (actualStatus === 'Success' || actualStatus === 'COMPLETED' || topLevelStatus === 'COMPLETED') {
-              const successMessage = `Payment completed successfully! Invoice ID: ${gatewayInvoiceId}`;
-              showToast(successMessage, 'success');
-            } else if (actualStatus === 'Processing' || actualStatus === 'PENDING' || topLevelStatus === 'PENDING') {
-              const pendingMessage = `Payment submitted! Invoice ID: ${gatewayInvoiceId}. Please check your transaction list.`;
-              showToast(pendingMessage, 'info');
-            } else if (actualStatus === 'Failed' || actualStatus === 'FAILED' || topLevelStatus === 'FAILED') {
+            if (isSuccess) {
+              showPaymentSuccessToast(Boolean(verifyData.sandbox));
+            } else if (statusUpper === 'FAILED' || statusUpper === 'CANCELLED') {
               showToast(
                 `Payment status: ${actualStatus}. Invoice ID: ${gatewayInvoiceId}`,
                 'warning'
               );
             } else {
-              showToast(
-                `Payment submitted! Invoice ID: ${gatewayInvoiceId}. Please check your transaction list.`,
-                'info'
-              );
+              const retryAfterMs = 2500;
+              const retryCheckSuccess = async () => {
+                try {
+                  const retryRes = await fetch(verifyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoice_id: invoiceId, from_redirect: true }),
+                  });
+                  if (!retryRes.ok) return;
+                  const retryData = await retryRes.json();
+                  const retryStatus = String(retryData.payment?.status || retryData.status || '').toUpperCase();
+                  if (retryStatus === 'SUCCESS' || retryStatus === 'COMPLETED') {
+                    showPaymentSuccessToast(Boolean(retryData.sandbox));
+                    return;
+                  }
+                } catch (_) {}
+                showToast(
+                  `Payment submitted! Invoice ID: ${gatewayInvoiceId}. Please check your transaction list.`,
+                  'warning'
+                );
+              };
+              setTimeout(retryCheckSuccess, retryAfterMs);
             }
 
             fetchTransactions(true);
@@ -393,8 +449,8 @@ export default function TransactionsPage() {
             }
             
             showToast(
-              `Payment submitted! Invoice ID: ${invoiceId}. Please check your transaction list.`,
-              'info'
+              `Payment submitted!. Please check your transaction list.`,
+              'warning'
             );
             fetchTransactions(true);
           }
@@ -421,8 +477,6 @@ export default function TransactionsPage() {
         }
       }, 500);
     } else if (paymentStatus) {
-      setHasShownPaymentToast(true);
-
       if (paymentStatus === 'cancelled') {
         setTimeout(async () => {
           try {
@@ -475,7 +529,10 @@ export default function TransactionsPage() {
           }
         }, 1000);
       } else if (paymentStatus === 'success') {
-        showToast('Payment completed successfully!', 'success');
+        fetch('/api/payment-gateway/sandbox')
+          .then((res) => (res.ok ? res.json() : { sandbox: false }))
+          .then((data) => showPaymentSuccessToast(Boolean(data.sandbox)))
+          .catch(() => showPaymentSuccessToast(false));
         fetchTransactions(true);
       } else if (paymentStatus === 'pending') {
         showToast('Payment is pending verification.', 'pending');

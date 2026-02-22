@@ -1,5 +1,7 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
+import { invalidateEmailConfigCache } from '@/lib/email-config';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
@@ -80,6 +82,9 @@ export async function POST(req: NextRequest) {
         updated_at: new Date()
       }
     });
+
+    invalidateEmailConfigCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

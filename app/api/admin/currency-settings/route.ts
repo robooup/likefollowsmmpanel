@@ -1,5 +1,7 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
+import { clearCurrencyCache } from '@/lib/currency-utils';
 import { NextResponse } from 'next/server';
 
 const defaultCurrencySettings = {
@@ -245,6 +247,9 @@ export async function POST(request: Request) {
         }
       }
     }
+
+    clearCurrencyCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

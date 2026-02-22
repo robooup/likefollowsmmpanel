@@ -4,6 +4,7 @@ import { resolveEmailContent } from '@/lib/email-templates/resolve-email-content
 import { templateContextFromUser } from '@/lib/email-templates/replace-template-variables';
 import { sendMail } from '@/lib/nodemailer';
 import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
+import { ActivityLogger, getClientIP } from '@/lib/activity-logger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -93,6 +94,30 @@ export async function POST(
         );
       } catch (notifError) {
         console.error('Error sending transaction success notification:', notifError);
+      }
+
+      try {
+        const username = (transaction.user as any)?.username ?? (transaction.user as any)?.name ?? 'User';
+        const amount = Number(transaction.amount) || 0;
+        await ActivityLogger.fundAdded(
+          transaction.userId,
+          username,
+          amount,
+          'USD',
+          'Admin approval',
+          getClientIP(req)
+        );
+      } catch (logError) {
+        console.error('Error logging fund_added activity:', logError);
+      }
+
+      try {
+        const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+        const username = (transaction.user as any)?.username ?? (transaction.user as any)?.name ?? 'User';
+        const amount = Number(transaction.amount) || 0;
+        await sendAdminNewTransactionNotification(transaction.id, amount, username);
+      } catch (adminNotifError) {
+        console.error('Error sending admin new transaction notification:', adminNotifError);
       }
 
       if (transaction.user.email) {

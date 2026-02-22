@@ -1354,7 +1354,7 @@ const UsersListPage = () => {
             </div>
           </div>
 
-          <div style={{ padding: '0 24px' }} className="min-h-[600px]">
+          <div style={{ padding: '0 24px' }}>
             {usersLoading ? (
               <UsersTableSkeleton />
             ) : users.length === 0 ? (

@@ -494,36 +494,29 @@ const APIProvidersPage = () => {
         return;
       }
 
-      for (const provider of activeProviders) {
-        try {
-          const response = await fetch(`/api/admin/providers/balance?providerId=${provider.id}`);
-
-          if (response.ok) {
+      const results = await Promise.all(
+        activeProviders.map(async (provider) => {
+          try {
+            const response = await fetch(`/api/admin/providers/balance?providerId=${provider.id}`);
             const result = await response.json();
-
-            if (result.success && result.data) {
-              setProviders(prev => prev.map(p => 
-                p.id === provider.id 
-                  ? { ...p, currentBalance: result.data.balance || 0 }
-                  : p
-              ));
-            } else if (result.error && process.env.NODE_ENV === 'development') {
-              console.warn(`⚠️ Failed to fetch balance for ${provider.name}: ${result.error}`);
+            if (response.ok && result.success && result.data) {
+              return { id: provider.id, balance: result.data.balance || 0 };
             }
-          } else {
+          } catch (error) {
             if (process.env.NODE_ENV === 'development') {
-              try {
-                const errorData = await response.json();
-                console.warn(`⚠️ Balance fetch failed for ${provider.name}:`, errorData.error || 'Unknown error');
-              } catch {
-              }
+              console.warn(`⚠️ Network error fetching balance for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
             }
           }
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn(`⚠️ Network error fetching balance for ${provider.name}:`, error instanceof Error ? error.message : 'Unknown error');
-          }
-        }
+          return null;
+        })
+      );
+
+      const updates = results.filter((r): r is { id: number; balance: number } => r !== null);
+      if (updates.length > 0) {
+        setProviders(prev => prev.map(p => {
+          const update = updates.find(u => u.id === p.id);
+          return update ? { ...p, currentBalance: update.balance } : p;
+        }));
       }
     } catch (error) {
       if (process.env.NODE_ENV === 'development') {

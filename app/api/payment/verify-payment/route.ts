@@ -1,5 +1,7 @@
-﻿import { db } from '@/lib/db';
+import { db } from '@/lib/db';
 import { sendTransactionSuccessNotification } from '@/lib/notifications/user-notifications';
+import { ActivityLogger, getClientIP } from '@/lib/activity-logger';
+import { isPaymentGatewaySandbox } from '@/lib/payment-gateway-config';
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -85,9 +87,11 @@ export async function GET(req: NextRequest) {
     }
 
     if (payment.status === "Success") {
+      const alreadySandbox = await isPaymentGatewaySandbox();
       return NextResponse.json({
         message: "Payment already verified",
         status: "COMPLETED",
+        sandbox: alreadySandbox,
         payment: {
           id: payment.id,
           invoice_id: payment.invoiceId,
@@ -463,11 +467,12 @@ export async function GET(req: NextRequest) {
       }
 
       try {
+        const isSandboxRedirect = await isPaymentGatewaySandbox();
         if (paymentStatus === "Success") {
-        await db.$transaction(async (prisma) => {
-          await prisma.addFunds.update({
+          await db.$transaction(async (prisma) => {
+            await prisma.addFunds.update({
               where: { invoiceId: invoice_id },
-            data: {
+              data: {
                 status: paymentStatus,
                 transactionId: transactionIdToSave,
                 paymentMethod: paymentMethodToSave,
@@ -475,30 +480,34 @@ export async function GET(req: NextRequest) {
                 amount: bdtAmountToSave,
                 name: nameToSave,
                 email: emailToSave,
+              }
+            });
+
+            if (!isSandboxRedirect) {
+              const originalAmount = Number(payment.amount) || 0;
+              const userSettings = await prisma.userSettings.findFirst();
+              let bonusAmount = 0;
+
+              if (userSettings && userSettings.bonusPercentage > 0) {
+                bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
+              }
+
+              const totalAmountToAdd = originalAmount + bonusAmount;
+
+              const user = await prisma.users.update({
+                where: { id: payment.userId },
+                data: {
+                  balance: { increment: totalAmountToAdd },
+                  balanceUSD: { increment: originalAmount },
+                  total_deposit: { increment: originalAmount }
+                }
+              });
+
+              console.log(`User ${payment.userId} balance updated. New balance: ${user.balance}`);
+            } else {
+              console.log(`Sandbox: Payment ${invoice_id} marked Success without adding balance (redirect path).`);
             }
           });
-
-            const originalAmount = Number(payment.amount) || 0;
-          const userSettings = await prisma.userSettings.findFirst();
-          let bonusAmount = 0;
-
-          if (userSettings && userSettings.bonusPercentage > 0) {
-            bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
-          }
-
-          const totalAmountToAdd = originalAmount + bonusAmount;
-
-          const user = await prisma.users.update({
-            where: { id: payment.userId },
-            data: {
-              balance: { increment: totalAmountToAdd },
-                balanceUSD: { increment: originalAmount },
-              total_deposit: { increment: originalAmount }
-            }
-          });
-
-          console.log(`User ${payment.userId} balance updated. New balance: ${user.balance}`);
-        });
         } else {
           await db.addFunds.update({
             where: { invoiceId: invoice_id },
@@ -574,6 +583,7 @@ export async function GET(req: NextRequest) {
             : finalStatus === "Processing"
             ? "Payment is pending verification"
             : "Payment verification failed",
+          sandbox: finalStatus === "Success" ? isSandboxRedirect : false,
           payment: completePayment ? {
             id: completePayment.id,
             invoice_id: completePayment.invoiceId,
@@ -661,54 +671,89 @@ export async function GET(req: NextRequest) {
 
       console.log(`Payment ${invoice_id} status updated to ${paymentStatus} with transaction_id: ${updatedPayment.transactionId}`);
 
+      const isSandbox = await isPaymentGatewaySandbox();
+
       if (isSuccessful && payment.user) {
         try {
-          await db.$transaction(async (prisma) => {
-            await prisma.addFunds.update({
+          if (isSandbox) {
+            await db.addFunds.update({
               where: { invoiceId: invoice_id },
-              data: {
-                status: "Success",
+              data: { status: "Success" }
+            });
+            console.log(`Sandbox: Payment ${invoice_id} marked Success without adding balance.`);
+          } else {
+            await db.$transaction(async (prisma) => {
+              await prisma.addFunds.update({
+                where: { invoiceId: invoice_id },
+                data: {
+                  status: "Success",
+                }
+              });
+
+              const originalAmount = Number(payment.amount) || 0;
+
+              const userSettings = await prisma.userSettings.findFirst();
+              let bonusAmount = 0;
+
+              if (userSettings && userSettings.bonusPercentage > 0) {
+                bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
+              }
+
+              const totalAmountToAdd = originalAmount + bonusAmount;
+
+              const user = await prisma.users.update({
+                where: { id: payment.userId },
+                data: {
+                  balance: { increment: totalAmountToAdd },
+                  balanceUSD: { increment: originalAmount },
+                  total_deposit: { increment: originalAmount }
+                }
+              });
+
+              console.log(`User ${payment.userId} balance updated. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`);
+
+              const updatedPaymentInner = await prisma.addFunds.findUnique({
+                where: { invoiceId: invoice_id },
+              });
+
+              if (updatedPaymentInner) {
+                try {
+                  await sendTransactionSuccessNotification(
+                    payment.userId,
+                    updatedPaymentInner.id,
+                    Number(payment.amount)
+                  );
+                } catch (notifError) {
+                  console.error('Error sending transaction success notification:', notifError);
+                }
               }
             });
 
-            const originalAmount = Number(payment.amount) || 0;
-
-            const userSettings = await prisma.userSettings.findFirst();
-            let bonusAmount = 0;
-
-            if (userSettings && userSettings.bonusPercentage > 0) {
-              bonusAmount = (originalAmount * userSettings.bonusPercentage) / 100;
+            try {
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              const method = (payment as any).paymentMethod ?? 'Payment gateway';
+              const amount = Number(payment.amount) || 0;
+              await ActivityLogger.fundAdded(
+                payment.userId,
+                username,
+                amount,
+                'USD',
+                method,
+                getClientIP(req)
+              );
+            } catch (logError) {
+              console.error('Error logging fund_added activity:', logError);
             }
 
-            const totalAmountToAdd = originalAmount + bonusAmount;
-
-            const user = await prisma.users.update({
-              where: { id: payment.userId },
-              data: {
-                balance: { increment: totalAmountToAdd },
-                balanceUSD: { increment: originalAmount },
-                total_deposit: { increment: originalAmount }
-              }
-            });
-
-            console.log(`User ${payment.userId} balance updated. New balance: ${user.balance}. Original amount: ${originalAmount}, Bonus: ${bonusAmount}, Total added: ${totalAmountToAdd}`);
-
-            const updatedPayment = await prisma.addFunds.findUnique({
-              where: { invoiceId: invoice_id },
-            });
-
-            if (updatedPayment) {
-              try {
-                await sendTransactionSuccessNotification(
-                  payment.userId,
-                  updatedPayment.id,
-                  Number(payment.amount)
-                );
-              } catch (notifError) {
-                console.error('Error sending transaction success notification:', notifError);
-              }
+            try {
+              const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+              const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+              const amount = Number(payment.amount) || 0;
+              await sendAdminNewTransactionNotification(payment.id, amount, username);
+            } catch (adminNotifError) {
+              console.error('Error sending admin new transaction notification:', adminNotifError);
             }
-          });
+          }
 
           console.log("Transaction completed successfully");
         } catch (transactionError) {
@@ -729,6 +774,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           status: "COMPLETED",
           message: "Payment verified successfully",
+          sandbox: isSandbox,
           payment: finalPaymentData ? {
             id: finalPaymentData.id,
             invoice_id: finalPaymentData.invoiceId,
@@ -937,9 +983,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (payment.status === "Success") {
+      const alreadySandbox = await isPaymentGatewaySandbox();
       return NextResponse.json({
         message: "Payment already verified",
         status: "COMPLETED",
+        sandbox: alreadySandbox,
         payment: {
           id: payment.id,
           invoice_id: payment.invoiceId,
@@ -1097,6 +1145,7 @@ export async function POST(req: NextRequest) {
         paymentStatus = payment.status || "Processing";
       }
 
+      let isSandboxPost = false;
       if (payment && (from_redirect || paymentStatus !== payment.status)) {
         console.log('Updating payment record with gateway verification data (POST):', {
           from_redirect,
@@ -1127,6 +1176,7 @@ export async function POST(req: NextRequest) {
         const emailToSave = verificationData?.email || payment.email || null;
 
         try {
+          isSandboxPost = await isPaymentGatewaySandbox();
           if (paymentStatus === "Success") {
             await db.$transaction(async (prisma) => {
               await prisma.addFunds.update({
@@ -1143,19 +1193,50 @@ export async function POST(req: NextRequest) {
                 }
               });
 
-              await prisma.users.update({
-                where: { id: payment.userId },
-                data: {
-                  balance: { increment: parseFloat(bdtAmountToSave.toString()) },
-                  balanceUSD: { increment: parseFloat(bdtAmountToSave.toString()) },
-                }
-              });
+              if (!isSandboxPost) {
+                await prisma.users.update({
+                  where: { id: payment.userId },
+                  data: {
+                    balance: { increment: parseFloat(bdtAmountToSave.toString()) },
+                    balanceUSD: { increment: parseFloat(bdtAmountToSave.toString()) },
+                  }
+                });
+              } else {
+                console.log(`Sandbox: Payment ${invoice_id} marked Success without adding balance (POST).`);
+              }
             });
 
-            try {
-              await sendTransactionSuccessNotification(payment.userId, payment.id, payment.amount.toString());
-            } catch (notifError) {
-              console.error('Error sending success notification:', notifError);
+            if (!isSandboxPost) {
+              try {
+                await sendTransactionSuccessNotification(payment.userId, payment.id, payment.amount.toString());
+              } catch (notifError) {
+                console.error('Error sending success notification:', notifError);
+              }
+
+              try {
+                const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+                const method = paymentMethodToSave ?? 'Payment gateway';
+                const amount = parseFloat(String(bdtAmountToSave ?? 0)) || 0;
+                await ActivityLogger.fundAdded(
+                  payment.userId,
+                  username,
+                  amount,
+                  'USD',
+                  String(method ?? 'Payment gateway'),
+                  getClientIP(req)
+                );
+              } catch (logError) {
+                console.error('Error logging fund_added activity:', logError);
+              }
+
+              try {
+                const { sendAdminNewTransactionNotification } = await import('@/lib/notifications/admin-notifications');
+                const username = (payment.user as any)?.username ?? (payment.user as any)?.name ?? 'User';
+                const amount = parseFloat(String(bdtAmountToSave ?? 0)) || 0;
+                await sendAdminNewTransactionNotification(payment.id, amount, username);
+              } catch (adminNotifError) {
+                console.error('Error sending admin new transaction notification:', adminNotifError);
+              }
             }
           } else {
             await db.addFunds.update({
@@ -1185,6 +1266,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         status: paymentStatus === "Success" ? "COMPLETED" : paymentStatus === "Cancelled" ? "CANCELLED" : "PENDING",
         message: paymentStatus === "Success" ? "Payment verified successfully" : "Payment verification in progress",
+        sandbox: paymentStatus === "Success" ? isSandboxPost : false,
         payment: updatedPayment ? {
           id: updatedPayment.id,
           invoice_id: updatedPayment.invoiceId,
@@ -1204,6 +1286,33 @@ export async function POST(req: NextRequest) {
 
     } catch (gatewayError) {
       console.error("Error calling payment gateway:", gatewayError);
+      const freshPayment = await db.addFunds.findUnique({
+        where: { invoiceId: invoice_id },
+        include: { user: true },
+      });
+      if (freshPayment?.status === "Success") {
+        const alreadySandbox = await isPaymentGatewaySandbox();
+        return NextResponse.json({
+          status: "COMPLETED",
+          message: "Payment verified successfully",
+          sandbox: alreadySandbox,
+          payment: {
+            id: freshPayment.id,
+            invoice_id: freshPayment.invoiceId,
+            amount: freshPayment.amount,
+            status: freshPayment.status,
+            transaction_id: freshPayment.transactionId,
+            payment_method: freshPayment.paymentMethod,
+            phone_number: null,
+            gatewayFee: freshPayment.gatewayFee,
+            name: freshPayment.name,
+            email: freshPayment.email,
+            createdAt: freshPayment.createdAt,
+            updatedAt: freshPayment.updatedAt,
+            userId: freshPayment.userId,
+          },
+        });
+      }
       return NextResponse.json({
         status: "PENDING",
         message: "Payment verification in progress",

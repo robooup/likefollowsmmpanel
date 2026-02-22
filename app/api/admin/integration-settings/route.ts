@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
@@ -315,6 +316,8 @@ export async function POST(request: Request) {
         adminNotifNewChildPanelOrders: integrationSettings.adminNotifNewChildPanelOrders ?? false,
       },
     });
+
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

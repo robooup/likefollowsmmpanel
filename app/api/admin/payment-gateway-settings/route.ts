@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
 
     const { clearPaymentGatewayCache } = await import('@/lib/payment-gateway-config');
     clearPaymentGatewayCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,
