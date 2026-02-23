@@ -25,7 +25,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const rawLimit = parseInt(searchParams.get('limit') || '20');
-    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), 200);
+    const MAX_ORDERS_LIMIT = 100000;
+    const limit = Math.min(Math.max(1, isNaN(rawLimit) ? 20 : rawLimit), MAX_ORDERS_LIMIT);
+    const offsetParam = searchParams.get('offset');
+    const useOffset = offsetParam !== null && offsetParam !== undefined && offsetParam !== '';
+    const offset = useOffset ? Math.max(0, parseInt(offsetParam, 10) || 0) : (page - 1) * limit;
     const status = searchParams.get('status');
     const search = searchParams.get('search');
     const userId = searchParams.get('userId');
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     
-    const skip = (page - 1) * limit;
+    const skip = offset;
     
     const whereClause: any = {};
     
@@ -127,6 +131,7 @@ export async function GET(req: NextRequest) {
     );
 
     const totalPages = Math.ceil(totalCount / limit);
+    const hasMore = skip + uniqueOrders.length < totalCount;
 
     const serializedOrders = uniqueOrders.map(order => ({
       ...order,
@@ -145,13 +150,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       data: serializedOrders,
+      total: totalCount,
+      offset: useOffset ? skip : undefined,
+      limit: serializedOrders.length,
+      hasMore: useOffset ? hasMore : page < totalPages,
       pagination: {
         page,
         limit,
         total: totalCount,
         totalPages,
-        hasNext: page < totalPages,
-        hasPrev: page > 1
+        hasNext: useOffset ? hasMore : page < totalPages,
+        hasPrev: useOffset ? skip > 0 : page > 1
       },
       error: null
     });

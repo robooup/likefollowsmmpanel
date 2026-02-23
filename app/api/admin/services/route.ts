@@ -23,14 +23,19 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit') || '10';
+    const limitParam = searchParams.get('limit') || '25';
+    const offsetParam = searchParams.get('offset');
     const search = searchParams.get('search') || '';
     const filter = searchParams.get('filter') || 'all';
+    const categoryIdParam = searchParams.get('categoryId');
     const serviceTypeFilter = searchParams.get('serviceType') || '';
     const packageTypeFilter = searchParams.get('packageType') || '';
     const rawLimit = parseInt(limitParam);
-    const MAX_SERVICES_LIMIT = 2000;
-    const limit = Math.min(isNaN(rawLimit) ? 10 : rawLimit, MAX_SERVICES_LIMIT);
+    const MAX_SERVICES_LIMIT = 100000;
+    const limit = Math.min(isNaN(rawLimit) ? 25 : rawLimit, MAX_SERVICES_LIMIT);
+    const offset = offsetParam !== null && offsetParam !== undefined && offsetParam !== ''
+      ? Math.max(0, parseInt(offsetParam) || 0)
+      : null;
 
     let deletedAtFilter;
     if (filter === 'trash') {
@@ -41,51 +46,62 @@ export async function GET(request: Request) {
       deletedAtFilter = null;
     }
 
-    if (limit >= 500) {
-      const whereClause = {
-        ...(deletedAtFilter !== undefined && { deletedAt: deletedAtFilter }),
-        ...(packageTypeFilter && packageTypeFilter.trim() && !isNaN(Number(packageTypeFilter.trim())) && {
-          packageType: Number(packageTypeFilter.trim()),
-        }),
-        ...(search && search.trim()
-          ? {
-              OR: [
-                {
-                  name: {
-                    contains: search.trim(),
-                    mode: 'insensitive' as const,
-                  },
-                },
-                {
-                  description: {
-                    contains: search.trim(),
-                    mode: 'insensitive' as const,
-                  },
-                },
-                ...(isNaN(Number(search.trim())) ? [] : [{
-                  id: {
-                    equals: Number(search.trim()),
-                  },
-                }]),
-                ...(isNaN(Number(search.trim())) ? [] : [{
-                  categoryId: {
-                    equals: Number(search.trim()),
-                  },
-                }]),
-                {
-                  category: {
-                    category_name: {
-                      contains: search.trim(),
-                      mode: 'insensitive' as const,
-                    },
-                  },
-                },
-              ],
-            }
-          : {})
-      };
+    const categoryIdFilter = categoryIdParam && categoryIdParam.trim() && !isNaN(Number(categoryIdParam.trim()))
+      ? Number(categoryIdParam.trim())
+      : null;
 
-      console.log('Fetching services (limit >= 500, capped at', MAX_SERVICES_LIMIT, ') with whereClause:', JSON.stringify(whereClause, null, 2));
+    const buildFlatWhereClause = () => ({
+      ...(deletedAtFilter !== undefined && { deletedAt: deletedAtFilter }),
+      ...(categoryIdFilter !== null && { categoryId: categoryIdFilter }),
+      ...(packageTypeFilter && packageTypeFilter.trim() && !isNaN(Number(packageTypeFilter.trim())) && {
+        packageType: Number(packageTypeFilter.trim()),
+      }),
+      ...(search && search.trim()
+        ? {
+            OR: [
+              { name: { contains: search.trim(), mode: 'insensitive' as const } },
+              { description: { contains: search.trim(), mode: 'insensitive' as const } },
+              ...(isNaN(Number(search.trim())) ? [] : [{ id: { equals: Number(search.trim()) } }]),
+              ...(isNaN(Number(search.trim())) ? [] : [{ categoryId: { equals: Number(search.trim()) } }]),
+              { category: { category_name: { contains: search.trim(), mode: 'insensitive' as const } } },
+              { provider: { contains: search.trim(), mode: 'insensitive' as const } },
+            ],
+          }
+        : {}),
+    });
+
+    if (offset !== null) {
+      const whereClause = buildFlatWhereClause();
+      const [total, services] = await Promise.all([
+        db.services.count({ where: whereClause }),
+        db.services.findMany({
+          where: whereClause,
+          orderBy: { createdAt: 'desc' },
+          include: { category: true },
+          skip: offset,
+          take: limit,
+        }),
+      ]);
+      const allCategories = await db.categories.findMany({
+        where: { hideCategory: 'no' },
+        orderBy: [{ id: 'asc' }, { position: 'asc' }, { createdAt: 'asc' }],
+      });
+      return NextResponse.json({
+        data: serializeServices(services || []),
+        total,
+        offset,
+        limit: services.length,
+        hasMore: offset + services.length < total,
+        totalCategories: allCategories.length,
+        allCategories,
+        success: true,
+      });
+    }
+
+    if (limit >= 500) {
+      const whereClause = buildFlatWhereClause();
+
+      console.log('Fetching services (limit >= 500, max', MAX_SERVICES_LIMIT, ') with whereClause:', JSON.stringify(whereClause, null, 2));
       
       const services = await db.services.findMany({
         where: whereClause,

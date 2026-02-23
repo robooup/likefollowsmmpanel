@@ -101,8 +101,6 @@ const Switch = ({ checked, onCheckedChange, onClick, title, disabled }: any) => 
   </button>
 );
 
-const ButtonLoader = () => <div className="loading-spinner"></div>;
-
 const ManageProvidersModal: React.FC<ManageProvidersModalProps> = ({
   isOpen,
   onClose,
@@ -229,7 +227,7 @@ const ManageProvidersModal: React.FC<ManageProvidersModalProps> = ({
                 className="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
-                  editingProvider ? 'Updating...' : <ButtonLoader />
+                  editingProvider ? 'Updating...' : 'Adding...'
                 ) : (
                   editingProvider ? 'Update Provider' : 'Add Provider'
                 )}

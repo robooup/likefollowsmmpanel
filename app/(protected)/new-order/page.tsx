@@ -651,8 +651,12 @@ function NewOrder() {
           setCombinedCategories(combined);
           setCategoriesWithServices(combined);
 
-          if (!selectedCategory && combined.length > 0) {
-            setSelectedCategory(combined[0].id);
+          if (combined.length > 0) {
+            if (platformFromUrl && platformFromUrl !== 'Everything') {
+              setSelectedCategory(combined[0].id);
+            } else if (!selectedCategory) {
+              setSelectedCategory(combined[0].id);
+            }
           }
         }
       });
@@ -704,8 +708,12 @@ function NewOrder() {
       setCombinedCategories(regularCategories);
       setCategoriesWithServices(regularCategories);
 
-      if (!selectedCategory && regularCategories.length > 0) {
-        setSelectedCategory(regularCategories[0].id);
+      if (regularCategories.length > 0) {
+        if (platformFromUrl && platformFromUrl !== 'Everything') {
+          setSelectedCategory(regularCategories[0].id);
+        } else if (!selectedCategory) {
+          setSelectedCategory(regularCategories[0].id);
+        }
       }
     }
   }, [category, favoriteCategories, platformFromUrl, selectedCategory]);

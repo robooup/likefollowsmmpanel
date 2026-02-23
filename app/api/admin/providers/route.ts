@@ -22,28 +22,10 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const filter = searchParams.get('filter') || 'active';
+    const filter = searchParams.get('filter') || 'all';
 
     let configuredProviders: any[] = [];
     try {
-      await db.$executeRaw`
-        CREATE TABLE IF NOT EXISTS \`api_providers\` (
-          \`id\` int NOT NULL AUTO_INCREMENT,
-          \`name\` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-          \`api_key\` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL,
-          \`api_url\` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-          \`status\` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'inactive',
-          \`is_custom\` boolean DEFAULT FALSE,
-          \`createdAt\` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-          \`updatedAt\` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-          PRIMARY KEY (\`id\`),
-          UNIQUE KEY \`api_providers_name_key\` (\`name\`),
-          KEY \`api_providers_status_idx\` (\`status\`),
-          KEY \`api_providers_name_idx\` (\`name\`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-      `;
-      
-
       let whereClause: any = {};
       
       if (filter === 'active') {
@@ -91,8 +73,17 @@ export async function GET(req: NextRequest) {
       console.log(`Filter: ${filter}, Where clause:`, whereClause);
       console.log(`Found ${configuredProviders.length} providers from database:`, configuredProviders.map(p => ({ id: p.id, name: p.name, status: p.status, deletedAt: p.deletedAt })));
     } catch (error) {
-      console.log('Provider table error:', error);
-      configuredProviders = [];
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Provider table error:', error);
+      return NextResponse.json(
+        {
+          error: 'Failed to load providers from database.',
+          success: false,
+          data: null,
+          debug: process.env.NODE_ENV === 'development' ? message : undefined
+        },
+        { status: 500 }
+      );
     }
 
     let providerStatsForFilter: { providerId: number; totalServices: number }[] = [];

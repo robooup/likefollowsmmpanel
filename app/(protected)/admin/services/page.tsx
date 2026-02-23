@@ -367,6 +367,7 @@ function AdminServicesPage() {
 
   const [stats, setStats] = useState({
     totalServices: 0,
+    totalWithoutTrash: 0,
     totalCategories: 0,
     activeServices: 0,
     inactiveServices: 0,
@@ -377,12 +378,21 @@ function AdminServicesPage() {
   const searchTerm = searchParams.get('search') || '';
 
   const [statsLoading, setStatsLoading] = useState(true);
-  const [servicesLoading, setServicesLoading] = useState(true);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const [providerFilter, setProviderFilter] = useState('All');
   const [pageSize, setPageSize] = useState('25');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalServices, setTotalServices] = useState(0);
+
+  const INFINITE_CHUNK_SIZE = 100;
+  const [accumulatedServices, setAccumulatedServices] = useState<any[]>([]);
+  const [servicesTotal, setServicesTotal] = useState(0);
+  const [allCategoriesFromApi, setAllCategoriesFromApi] = useState<any[]>([]);
+  const [hasMoreChunks, setHasMoreChunks] = useState(false);
+  const [isLoadingChunk, setIsLoadingChunk] = useState(false);
+  const [loadError, setLoadError] = useState<Error | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const updateQueryParams = useCallback((updates: Record<string, string | number | null>) => {
     const params = new URLSearchParams();
@@ -568,40 +578,127 @@ function AdminServicesPage() {
     }
   );
 
+  const numericPageSize = pageSize === 'all' ? INFINITE_CHUNK_SIZE : (parseInt(pageSize, 10) || INFINITE_CHUNK_SIZE);
+  const categoriesPerPage = Math.min(numericPageSize, 500);
+  const categoryPaginationKey = `/api/admin/services?page=${currentPage}&limit=${categoriesPerPage}&search=${encodeURIComponent(searchTerm)}&filter=${statusFilter}`;
   const {
-    data,
-    error,
-    isLoading,
-    mutate: refreshServices,
-  } = useSWR(
-    `/api/admin/services?page=${currentPage}&limit=${
-      pageSize === 'all' ? '999999' : pageSize
-    }&search=${searchTerm}&filter=${statusFilter}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      refreshInterval: 0,
-      dedupingInterval: 60000,
-      keepPreviousData: true,
-      errorRetryCount: 3,
-      errorRetryInterval: 1000,
-    }
+    data: categoryPageData,
+    error: categoryPageError,
+    isLoading: categoryPageLoading,
+    mutate: refreshCategoryPage,
+  } = useSWR(categoryPaginationKey, fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 5000,
+    keepPreviousData: true,
+    errorRetryCount: 2,
+  });
+
+  const getInitialChunkSize = useCallback(() => {
+    if (pageSize === 'all') return INFINITE_CHUNK_SIZE;
+    const n = parseInt(pageSize, 10);
+    if (Number.isNaN(n)) return INFINITE_CHUNK_SIZE;
+    return Math.min(n, INFINITE_CHUNK_SIZE);
+  }, [pageSize]);
+
+  const getNextChunkSize = useCallback(() => {
+    if (pageSize === 'all') return INFINITE_CHUNK_SIZE;
+    const max = parseInt(pageSize, 10);
+    if (Number.isNaN(max)) return INFINITE_CHUNK_SIZE;
+    const remaining = max - accumulatedServices.length;
+    return remaining <= 0 ? 0 : Math.min(INFINITE_CHUNK_SIZE, remaining);
+  }, [pageSize, accumulatedServices.length]);
+
+  const maxToLoad = pageSize === 'all' ? 999999 : (parseInt(pageSize, 10) || INFINITE_CHUNK_SIZE);
+  const canLoadMore = hasMoreChunks && !isLoadingChunk && accumulatedServices.length < maxToLoad;
+
+  const fetchChunk = useCallback(
+    async (offset: number, limit: number, append: boolean) => {
+      if (limit <= 0) return;
+      setIsLoadingChunk(true);
+      setLoadError(null);
+      try {
+        const params = new URLSearchParams({
+          offset: String(offset),
+          limit: String(limit),
+          search: searchTerm,
+          filter: statusFilter,
+        });
+        const res = await axiosInstance.get(`/api/admin/services?${params.toString()}`);
+        const payload = res.data;
+        const list = Array.isArray(payload.data) ? payload.data : [];
+        const total = typeof payload.total === 'number' ? payload.total : 0;
+        const hasMore = Boolean(payload.hasMore);
+
+        if (append) {
+          setAccumulatedServices((prev) => [...prev, ...list]);
+        } else {
+          setAccumulatedServices(list);
+        }
+        setServicesTotal(total);
+        setHasMoreChunks(hasMore);
+        if (Array.isArray(payload.allCategories) && payload.allCategories.length > 0) {
+          setAllCategoriesFromApi(payload.allCategories);
+        }
+        setTotalServices(total);
+        setTotalPages(1);
+      } catch (err: any) {
+        setLoadError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        setIsLoadingChunk(false);
+        if (!append) setServicesLoading(false);
+      }
+    },
+    [searchTerm, statusFilter]
   );
 
-  console.log('=== DEBUG INFO ===');
-  console.log('pageSize:', pageSize);
-  console.log('statusFilter:', statusFilter);
-  console.log('API URL:', `/api/admin/services?page=${currentPage}&limit=${pageSize === 'all' ? '999999' : pageSize}&search=${searchTerm}&filter=${statusFilter}`);
-  console.log('API Response data:', data);
-  console.log('allCategories:', data?.allCategories);
-  console.log('services data:', data?.data);
+  const refreshServices = useCallback(
+    (optionalNewData?: { data?: any[]; allCategories?: any[]; total?: number } | { revalidate?: boolean }) => {
+      const newData = optionalNewData && 'data' in optionalNewData ? optionalNewData : undefined;
+      if (newData) {
+        refreshCategoryPage({ ...categoryPageData, ...newData } as any, { revalidate: true });
+        return;
+      }
+      refreshCategoryPage();
+    },
+    [refreshCategoryPage, categoryPageData]
+  );
 
   useEffect(() => {
-    if (data) {
-      setTotalPages(data.totalPages || 1);
-      setTotalServices(data.total || 0);
-    }
-  }, [data]);
+    setCurrentPage(1);
+  }, [pageSize, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    if (!categoryPageLoading) setServicesLoading(false);
+  }, [categoryPageLoading]);
+
+  const totalCategoriesFromApi = categoryPageData?.totalCategories ?? 0;
+  const paginationTotalPages = categoryPageData?.totalPages ?? Math.max(1, Math.ceil(totalCategoriesFromApi / categoriesPerPage));
+  const showPaginationLine = true;
+
+  const data = useMemo(
+    () =>
+      categoryPageData
+        ? {
+            data: Array.isArray(categoryPageData.data) ? categoryPageData.data : [],
+            allCategories: Array.isArray(categoryPageData.allCategories) ? categoryPageData.allCategories : [],
+            total: categoryPageData.total ?? 0,
+            totalPages: categoryPageData.totalPages ?? 1,
+            totalCategories: categoryPageData.totalCategories ?? 0,
+            hasMore: false,
+          }
+        : {
+            data: [],
+            allCategories: [],
+            total: 0,
+            totalPages: 1,
+            totalCategories: 0,
+            hasMore: false,
+          },
+    [categoryPageData]
+  );
+
+  const error = categoryPageError ?? loadError;
+  const isLoading = categoryPageLoading;
 
   const getProviderNameById = useCallback((providerId: number | string | null, providerName?: string) => {
 
@@ -771,52 +868,16 @@ function AdminServicesPage() {
     });
   }, [data?.data, searchTerm, statusFilter, providerFilter]);
 
-  const countsWithoutTrash = useMemo(() => {
-    if (!allServicesData?.data) return { all: 0, active: 0, inactive: 0 };
+  const countsWithoutTrash = useMemo(
+    () => ({
+      all: (stats.totalWithoutTrash ?? (stats.activeServices + stats.inactiveServices)) || 0,
+      active: stats.activeServices ?? 0,
+      inactive: stats.inactiveServices ?? 0,
+    }),
+    [stats.totalWithoutTrash, stats.activeServices, stats.inactiveServices]
+  );
 
-    const allServices = allServicesData.data;
-    console.log('=== COUNTS DEBUG ===');
-    console.log('Total services:', allServices.length);
-
-    const nonTrashedServices = allServices.filter((service: any) => 
-      service.deletedAt === null || service.deletedAt === undefined
-    );
-    console.log('Non-trashed services:', nonTrashedServices.length);
-
-    const trashedServices = allServices.filter((service: any) => 
-      service.deletedAt !== null && service.deletedAt !== undefined
-    );
-    console.log('Trashed services:', trashedServices.length);
-
-    const activeCount = nonTrashedServices.filter((service: any) => service.status === 'active').length;
-    const inactiveCount = nonTrashedServices.filter((service: any) => service.status === 'inactive').length;
-    const allCount = activeCount + inactiveCount;
-
-    console.log('Active (non-trashed):', activeCount);
-    console.log('Inactive (non-trashed):', inactiveCount);
-    console.log('All (non-trashed):', allCount);
-
-    return {
-      all: allCount,
-      active: activeCount,
-      inactive: inactiveCount
-    };
-  }, [allServicesData?.data]);
-
-  const trashServicesCount = useMemo(() => {
-    if (!allServicesData?.data) return 0;
-    const count = allServicesData.data.filter((service: any) => 
-      service.deletedAt !== null && service.deletedAt !== undefined
-    ).length;
-    return count;
-  }, [allServicesData?.data]);
-
-  useEffect(() => {
-    setStats(prev => ({
-      ...prev,
-      trashServices: trashServicesCount
-    }));
-  }, [trashServicesCount]);
+  const trashServicesCount = stats.trashServices ?? 0;
 
   const uniqueProviders = useMemo(() => {
 
@@ -1579,10 +1640,7 @@ function AdminServicesPage() {
         (service: any) => service.id.toString() !== id.toString()
       );
 
-      refreshServices(
-        { ...data, data: updatedServices },
-        { revalidate: false }
-      );
+      refreshServices({ ...data, data: updatedServices });
 
       const response = await axiosInstance.delete(
         `/api/admin/services/delete-services?id=${id}`
@@ -1632,10 +1690,7 @@ function AdminServicesPage() {
         (service: any) => !selectedServices.includes(service.id.toString())
       );
 
-      refreshServices(
-        { ...data, data: updatedServices },
-        { revalidate: false }
-      );
+      refreshServices({ ...data, data: updatedServices });
 
       setSelectedServices([]);
 
@@ -2150,10 +2205,7 @@ function AdminServicesPage() {
         );
 
         if (action === 'delete') {
-          refreshServices(
-            { ...data, data: updatedServices },
-            { revalidate: false }
-          );
+          refreshServices({ ...data, data: updatedServices });
         }
 
         if (action === 'move') {
@@ -2189,14 +2241,22 @@ function AdminServicesPage() {
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setStatsLoading(true);
     setServicesLoading(true);
-    showToast('Services refreshed successfully!', 'success');
-    setTimeout(() => {
+    try {
+      await refreshCategoryPage(undefined, { revalidate: true });
+      const res = await fetch('/api/admin/services/stats');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setStats((prev) => ({ ...prev, ...json.data, totalCategories: json.data.totalCategories ?? prev.totalCategories }));
+        }
+      }
+    } finally {
       setStatsLoading(false);
       setServicesLoading(false);
-    }, 1500);
+    }
   };
 
   useEffect(() => {
@@ -2231,17 +2291,21 @@ function AdminServicesPage() {
   }, [categoriesData?.data]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setServicesLoading(true);
-      setTimeout(() => setServicesLoading(false), 1000);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+    const sentinel = loadMoreRef.current;
+    if (!sentinel || !canLoadMore) return;
 
-  useEffect(() => {
-    setServicesLoading(true);
-    setTimeout(() => setServicesLoading(false), 800);
-  }, [statusFilter]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        const nextSize = getNextChunkSize();
+        if (nextSize <= 0) return;
+        fetchChunk(accumulatedServices.length, nextSize, true);
+      },
+      { rootMargin: '200px', threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [canLoadMore, accumulatedServices.length, getNextChunkSize, fetchChunk]);
 
   useEffect(() => {
     if (data?.data && Object.keys(groupedServices).length > 0) {
@@ -2419,10 +2483,14 @@ function AdminServicesPage() {
                 value={pageSize}
                 onChange={(e) => setPageSize(e.target.value)}
                 className="pl-4 pr-8 py-2.5 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white transition-all duration-200 appearance-none cursor-pointer text-sm"
+                title="Services per page"
               >
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
                 <option value="all">All</option>
               </select>
               <select 
@@ -2578,10 +2646,8 @@ function AdminServicesPage() {
           </div>
 
           <div style={{ padding: '0 24px' }}>
-            {servicesLoading ? (
-              <ServicesTableSkeleton pageSize={pageSize} currentPage={currentPage} totalPages={totalPages} />
-            ) : isLoading ? (
-              <ServicesTableSkeleton pageSize={pageSize} currentPage={currentPage} totalPages={totalPages} />
+            {(isLoading && !data?.data?.length) || servicesLoading ? (
+              <ServicesTableSkeleton pageSize={pageSize} currentPage={currentPage} totalPages={paginationTotalPages} />
             ) : error ? (
               <div className="text-center py-12">
                 <FaExclamationTriangle
@@ -2593,7 +2659,7 @@ function AdminServicesPage() {
                   Error Loading Services
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {error}
+                  {error?.message ?? (error ? String(error) : 'Unknown error')}
                 </p>
               </div>
             ) : !data || (statusFilter !== 'all' && Object.keys(groupedServices).length === 0) || (statusFilter !== 'all' && Object.values(groupedServices).every(services => services.length === 0)) || (statusFilter === 'all' && Object.keys(groupedServices).length === 0) ? (
@@ -2722,51 +2788,47 @@ function AdminServicesPage() {
                   handleServiceDrop={handleServiceDrop}
                 />
                 </div>
-                <div className="flex flex-col md:flex-row items-center justify-between pt-4 pb-6 border-t dark:border-gray-700">
-                  <div
-                    className="text-sm text-gray-600 dark:text-gray-300"
-                  >
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <GradientSpinner size="w-4 h-4" />
-                        <span>Loading services...</span>
-                      </div>
-                    ) : pageSize === 'all' ? (
-                      `Showing all ${data?.totalCategories || 0} categories`
-                    ) : (
-                      `Showing page ${currentPage} of ${totalPages} (${
-                        data?.totalCategories || 0
-                      } total categories)`
-                    )}
-                  </div>
-                  {pageSize !== 'all' && (
-                    <div className="flex items-center gap-2 mt-4 md:mt-0">
+                <div ref={loadMoreRef} className="min-h-[1px]" aria-hidden />
+                {showPaginationLine && (
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 pb-6 border-t dark:border-gray-700 px-6">
+                    <div className="text-sm text-gray-600 dark:text-gray-300 mb-4 md:mb-0">
+                      {isLoading ? (
+                        <div className="flex items-center gap-2">
+                          <span>Loading pagination...</span>
+                        </div>
+                      ) : totalCategoriesFromApi === 0 ? (
+                        `Showing 0 of 0 categories`
+                      ) : (
+                        `Showing ${Math.max(1, (currentPage - 1) * categoriesPerPage + 1)} to ${Math.min(currentPage * categoriesPerPage, totalCategoriesFromApi)} of ${totalCategoriesFromApi} categories`
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
                       <button
-                        onClick={handlePreviousPage}
-                        disabled={isLoading || currentPage === 1}
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        disabled={currentPage <= 1 || isLoading}
                         className="btn btn-secondary disabled:opacity-50"
                       >
                         Previous
                       </button>
-                      <span
-                        className="text-sm text-gray-600 dark:text-gray-300"
-                      >
+                      <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap px-4">
                         {isLoading ? (
-                          <GradientSpinner size="w-4 h-4" />
+                          <span className="inline-block w-4 h-4 border-2 border-blue-500 dark:border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          `Page ${currentPage} of ${totalPages}`
+                          `Page ${currentPage} of ${paginationTotalPages}`
                         )}
                       </span>
                       <button
-                        onClick={handleNextPage}
-                        disabled={isLoading || currentPage === totalPages}
+                        type="button"
+                        onClick={() => setCurrentPage((p) => Math.min(paginationTotalPages, p + 1))}
+                        disabled={currentPage >= paginationTotalPages || isLoading}
                         className="btn btn-secondary disabled:opacity-50"
                       >
                         Next
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </>
             )}
           </div>

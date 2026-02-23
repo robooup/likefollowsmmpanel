@@ -77,39 +77,50 @@ const GradientSpinner = ({ size = 'w-16 h-16', className = '' }) => (
   </div>
 );
 
-const GradientTableLoader = () => {
-  const rows = Array.from({ length: 10 });
-  
-  return (
-    <div className="lg:block">
-      <table className="w-full text-sm min-w-[1200px]">
-        <thead className="sticky top-0 bg-white dark:bg-[var(--card-bg)] border-b dark:border-gray-700 z-10">
-          <tr>
-            {Array.from({ length: 14 }).map((_, idx) => (
-              <th key={idx} className="text-left p-3 text-gray-900 dark:text-gray-100">
-                <div className="h-4 rounded w-3/4 gradient-shimmer" />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((_, rowIdx) => (
-            <tr key={rowIdx} className="border-b dark:border-gray-700">
-              {Array.from({ length: 14 }).map((_, colIdx) => {
-                const widths = ['w-8', 'w-16', 'w-24', 'w-20', 'w-32', 'w-16', 'w-12', 'w-16', 'w-28', 'w-20', 'w-16', 'w-24', 'w-16', 'w-12'];
-                return (
-                  <td key={colIdx} className="p-3">
-                    <div className={`h-4 rounded gradient-shimmer ${widths[colIdx] || 'w-20'}`} />
-                  </td>
-                );
-              })}
-            </tr>
+const ORDER_TABLE_WIDTHS = ['w-8', 'w-16', 'w-24', 'w-20', 'w-32', 'w-16', 'w-12', 'w-16', 'w-28', 'w-20', 'w-16', 'w-24', 'w-16', 'w-12'];
+
+const GradientTableLoaderRow = () => (
+  <tr className="border-b dark:border-gray-700">
+    {ORDER_TABLE_WIDTHS.map((w, colIdx) => (
+      <td key={colIdx} className="p-3">
+        <div className={`h-4 rounded gradient-shimmer ${w}`} />
+      </td>
+    ))}
+  </tr>
+);
+
+const GradientTableSkeletonRows = ({ rowCount = 5 }: { rowCount?: number }) => (
+  <div className="lg:block">
+    <table className="w-full text-sm min-w-[1200px]">
+      <tbody>
+        {Array.from({ length: rowCount }).map((_, rowIdx) => (
+          <GradientTableLoaderRow key={rowIdx} />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+const GradientTableLoader = () => (
+  <div className="lg:block">
+    <table className="w-full text-sm min-w-[1200px]">
+      <thead className="sticky top-0 bg-white dark:bg-[var(--card-bg)] border-b dark:border-gray-700 z-10">
+        <tr>
+          {Array.from({ length: 14 }).map((_, idx) => (
+            <th key={idx} className="text-left p-3 text-gray-900 dark:text-gray-100">
+              <div className="h-4 rounded w-3/4 gradient-shimmer" />
+            </th>
           ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: 10 }).map((_, rowIdx) => (
+          <GradientTableLoaderRow key={rowIdx} />
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
 
 const Toast = ({
   message,
@@ -242,12 +253,22 @@ const AdminOrdersPage = () => {
 
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
-    limit: 20,
+    limit: 25,
     total: 0,
     totalPages: 0,
     hasNext: false,
     hasPrev: false,
   });
+
+  const ALL_LIMIT = 100000;
+  const INFINITE_CHUNK_SIZE = 100;
+  const effectiveLimit = Math.min(pagination.limit, ALL_LIMIT);
+  const isInfiniteScrollMode = effectiveLimit > INFINITE_CHUNK_SIZE;
+
+  const [accumulatedOrders, setAccumulatedOrders] = useState<Order[]>([]);
+  const [infiniteTotal, setInfiniteTotal] = useState(0);
+  const [infiniteLoadingMore, setInfiniteLoadingMore] = useState(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
 
   const updateQueryParams = useCallback((updates: Record<string, string | number | null>) => {
     const params = new URLSearchParams();
@@ -419,8 +440,10 @@ const AdminOrdersPage = () => {
 
   const ordersUrl = useMemo(() => {
     const params = new URLSearchParams();
-    params.set('page', pagination.page.toString());
-    params.set('limit', pagination.limit.toString());
+    const offset = isInfiniteScrollMode ? 0 : (pagination.page - 1) * effectiveLimit;
+    const limit = isInfiniteScrollMode ? INFINITE_CHUNK_SIZE : effectiveLimit;
+    params.set('offset', offset.toString());
+    params.set('limit', limit.toString());
     if (statusFilter && statusFilter !== 'all') {
       params.set('status', statusFilter);
     }
@@ -428,7 +451,7 @@ const AdminOrdersPage = () => {
       params.set('search', searchTerm);
     }
     return `/api/admin/orders?${params.toString()}`;
-  }, [pagination.page, pagination.limit, statusFilter, searchTerm]);
+  }, [isInfiniteScrollMode, pagination.page, effectiveLimit, statusFilter, searchTerm]);
 
   const {
     data: ordersData,
@@ -587,23 +610,23 @@ const AdminOrdersPage = () => {
               const updatedOrder = data.data;
               console.log('Order updated via real-time:', updatedOrder.id);
 
-              setOrders((prevOrders) => {
-                const orderIndex = prevOrders.findIndex((o) => o.id === updatedOrder.id);
-                if (orderIndex !== -1) {
-                  const newOrders = [...prevOrders];
-                  newOrders[orderIndex] = {
-                    ...newOrders[orderIndex],
-                    status: updatedOrder.status,
-                    providerStatus: updatedOrder.providerStatus,
-                    startCount: updatedOrder.startCount,
-                    remains: updatedOrder.remains,
-                    charge: updatedOrder.charge,
-                    lastSyncAt: updatedOrder.lastSyncAt,
-                  };
-                  return newOrders;
-                }
-                return prevOrders;
-              });
+              const applyUpdate = (prev: Order[]) => {
+                const idx = prev.findIndex((o) => o.id === updatedOrder.id);
+                if (idx === -1) return prev;
+                const next = [...prev];
+                next[idx] = {
+                  ...next[idx],
+                  status: updatedOrder.status,
+                  providerStatus: updatedOrder.providerStatus,
+                  startCount: updatedOrder.startCount,
+                  remains: updatedOrder.remains,
+                  charge: updatedOrder.charge,
+                  lastSyncAt: updatedOrder.lastSyncAt,
+                };
+                return next;
+              };
+              setOrders(applyUpdate);
+              setAccumulatedOrders(applyUpdate);
 
               if (refreshStatsRef.current) {
                 refreshStatsRef.current();
@@ -714,23 +737,63 @@ const AdminOrdersPage = () => {
 
   const providerFilter = providerParam || 'all';
 
+  const baseOrders = isInfiniteScrollMode ? accumulatedOrders : orders;
+
   const filteredOrders = useMemo(() => {
     if (providerFilter === 'all' || !providerFilter) {
-      return orders;
+      return baseOrders;
     }
 
     if (providerFilter === 'self') {
-      return orders.filter((order) => !order.service?.providerId);
+      return baseOrders.filter((order) => !order.service?.providerId);
     }
 
-    return orders.filter((order) => {
+    return baseOrders.filter((order) => {
       if (!order.service?.providerId) {
         return false;
       }
       const orderProviderId = String(order.service.providerId);
       return orderProviderId === providerFilter;
     });
-  }, [orders, providerFilter]);
+  }, [baseOrders, providerFilter]);
+
+  const fetchMoreOrders = useCallback(async () => {
+    if (infiniteLoadingMore) return;
+    const currentLen = accumulatedOrders.length;
+    const cap = Math.min(infiniteTotal, effectiveLimit);
+    if (currentLen >= cap) return;
+    const nextChunkSize = Math.min(INFINITE_CHUNK_SIZE, cap - currentLen);
+    setInfiniteLoadingMore(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('offset', currentLen.toString());
+      params.set('limit', nextChunkSize.toString());
+      if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+      if (searchTerm) params.set('search', searchTerm);
+      const { data } = await axiosInstance.get(`/api/admin/orders?${params.toString()}`);
+      const list = (data?.data ?? []).map((o: any) => ({
+        ...o,
+        mode: o?.service?.providerId && o?.service?.providerServiceId ? 'Auto' : 'Manual',
+      }));
+      setAccumulatedOrders(prev => [...prev, ...list]);
+    } finally {
+      setInfiniteLoadingMore(false);
+    }
+  }, [accumulatedOrders.length, infiniteTotal, effectiveLimit, infiniteLoadingMore, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    if (!isInfiniteScrollMode || !loadMoreSentinelRef.current) return;
+    const el = loadMoreSentinelRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const [e] = entries;
+        if (e?.isIntersecting) fetchMoreOrders();
+      },
+      { root: null, rootMargin: '200px', threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isInfiniteScrollMode, fetchMoreOrders]);
 
   useEffect(() => {
     if (ordersData?.success && ordersData.data) {
@@ -741,36 +804,53 @@ const AdminOrdersPage = () => {
             ? 'Auto'
             : 'Manual',
       }));
-      setOrders(transformed);
-      setPagination(ordersData.pagination || {
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
-      });
-
-      const statusCounts = calculateStatusCounts(ordersData.data || []);
-      setStats(prev => ({
-        ...prev,
-        pendingOrders: statusCounts.pending,
-        processingOrders: statusCounts.processing,
-        completedOrders: statusCounts.completed,
-        totalOrders: ordersData.pagination?.total || prev.totalOrders,
-      }));
+      const total = ordersData.pagination?.total ?? ordersData.total ?? transformed.length;
+      if (isInfiniteScrollMode) {
+        setAccumulatedOrders(transformed);
+        setInfiniteTotal(total);
+        setPagination(prev => ({
+          ...prev,
+          total,
+          totalPages: 1,
+          hasNext: Boolean(ordersData.pagination?.hasNext ?? ordersData.hasMore),
+          hasPrev: false,
+        }));
+      } else {
+        setOrders(transformed);
+        setPagination(ordersData.pagination || {
+          page: pagination.page,
+          limit: effectiveLimit,
+          total,
+          totalPages: Math.ceil(total / effectiveLimit) || 1,
+          hasNext: Boolean(ordersData.pagination?.hasNext ?? ordersData.hasMore),
+          hasPrev: pagination.page > 1,
+        });
+      }
+      if (!isInfiniteScrollMode) {
+        const statusCounts = calculateStatusCounts(ordersData.data || []);
+        setStats(prev => ({
+          ...prev,
+          pendingOrders: statusCounts.pending,
+          processingOrders: statusCounts.processing,
+          completedOrders: statusCounts.completed,
+          totalOrders: total,
+        }));
+      } else {
+        setStats(prev => ({ ...prev, totalOrders: total }));
+      }
     } else if (ordersError) {
       setOrders([]);
+      setAccumulatedOrders([]);
       setPagination({
         page: 1,
-        limit: 20,
+        limit: pagination.limit,
         total: 0,
         totalPages: 0,
         hasNext: false,
         hasPrev: false,
       });
     }
-  }, [ordersData, ordersError]);
+  }, [ordersData, ordersError, isInfiniteScrollMode, effectiveLimit, pagination.page]);
 
   useEffect(() => {
     if (statsData?.success && statsData.data) {
@@ -1258,9 +1338,10 @@ const AdminOrdersPage = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <select
-                value={pagination.limit}
+                value={pagination.limit === ALL_LIMIT ? 'all' : pagination.limit}
                 onChange={(e) => {
-                  const limit = e.target.value === 'all' ? 1000 : parseInt(e.target.value);
+                  const val = e.target.value;
+                  const limit = val === 'all' ? ALL_LIMIT : parseInt(val, 10);
                   setPagination(prev => ({
                     ...prev,
                     limit,
@@ -1272,6 +1353,8 @@ const AdminOrdersPage = () => {
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
                 <option value="all">All</option>
               </select>
 
@@ -1537,15 +1620,23 @@ const AdminOrdersPage = () => {
                   getStatusIcon={getStatusIcon}
                   calculateProgress={calculateProgress}
                 />
+                {isInfiniteScrollMode && (
+                  <>
+                    <div ref={loadMoreSentinelRef} className="h-4 min-h-4" aria-hidden />
+                    {infiniteLoadingMore && <GradientTableSkeletonRows rowCount={5} />}
+                  </>
+                )}
                 <div className="flex flex-col md:flex-row items-center justify-between pt-4 pb-6 border-t dark:border-gray-700 px-6">
                   <div
                     className="text-sm mb-4 md:mb-0"
                     style={{ color: 'var(--text-muted)' }}
                   >
-                    {ordersLoading ? (
+                    {ordersLoading && !isInfiniteScrollMode ? (
                       <div className="flex items-center gap-2">
                         <span>Loading pagination...</span>
                       </div>
+                    ) : isInfiniteScrollMode ? (
+                      `Showing 1 to ${formatNumber(baseOrders.length)} of ${formatNumber(Math.min(infiniteTotal, effectiveLimit))} orders`
                     ) : (
                       `Showing ${formatNumber(
                         (pagination.page - 1) * pagination.limit + 1
@@ -1557,40 +1648,42 @@ const AdminOrdersPage = () => {
                       )} of ${formatNumber(pagination.total)} orders`
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        const newPage = Math.max(1, pagination.page - 1);
-                        setPagination(prev => ({ ...prev, page: newPage }));
-                      }}
-                      disabled={!pagination.hasPrev || ordersLoading}
-                      className="btn btn-secondary"
-                    >
-                      Previous
-                    </button>
-                    <span
-                      className="text-sm px-4"
-                      style={{ color: 'var(--text-muted)' }}
-                    >
-                      {ordersLoading ? (
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        `Page ${formatNumber(
-                          pagination.page
-                        )} of ${formatNumber(pagination.totalPages)}`
-                      )}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newPage = Math.min(pagination.totalPages, pagination.page + 1);
-                        setPagination(prev => ({ ...prev, page: newPage }));
-                      }}
-                      disabled={!pagination.hasNext || ordersLoading}
-                      className="btn btn-secondary"
-                    >
-                      Next
-                    </button>
-                  </div>
+                  {!isInfiniteScrollMode && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const newPage = Math.max(1, pagination.page - 1);
+                          setPagination(prev => ({ ...prev, page: newPage }));
+                        }}
+                        disabled={!pagination.hasPrev || ordersLoading}
+                        className="btn btn-secondary"
+                      >
+                        Previous
+                      </button>
+                      <span
+                        className="text-sm px-4"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {ordersLoading ? (
+                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          `Page ${formatNumber(
+                            pagination.page
+                          )} of ${formatNumber(pagination.totalPages)}`
+                        )}
+                      </span>
+                      <button
+                        onClick={() => {
+                          const newPage = Math.min(pagination.totalPages, pagination.page + 1);
+                          setPagination(prev => ({ ...prev, page: newPage }));
+                        }}
+                        disabled={!pagination.hasNext || ordersLoading}
+                        className="btn btn-secondary"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
                 </div>
               </>
             )}

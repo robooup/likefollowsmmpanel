@@ -411,49 +411,46 @@ const APIProvidersPage = () => {
 
   const fetchProviders = async (filter: string = 'all') => {
     try {
-      console.log('🔄 fetchProviders called with filter:', filter);
-      console.log('🌐 Making API call to:', `/api/admin/providers?filter=${filter}`);
-      const response = await fetch(`/api/admin/providers?filter=${filter}`);
-      console.log('📡 API response status:', response.status);
-      const result = await response.json();
+      const response = await fetch(`/api/admin/providers?filter=${filter}`, {
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      const result = await response.json().catch(() => ({}));
+      const rawList = result?.data?.providers ?? [];
 
-      if (result.success) {
-        console.log('Fetched providers:', result.data.providers);
-
-        setAvailableProviders(result.data.providers);
-
-        const uiProviders = result.data.providers
-          .map((p: any) => ({
-            id: p.id,
-            name: p.label,
-            apiUrl: p.apiUrl,
-            apiKey: p.apiKey || '',
-            status: p.deletedAt ? 'trash' : p.status,
-            currentBalance: p.currentBalance ?? p.current_balance ?? 0,
-            successRate: 0,
-            avgResponseTime: 0,
-            createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
-            lastSync: p.updatedAt ? new Date(p.updatedAt) : new Date(),
-            deletedAt: p.deletedAt || null,
-            description: p.description
-          }));
+      if (response.ok && result.success === true && Array.isArray(rawList)) {
+        setAvailableProviders(rawList);
+        const uiProviders = rawList.map((p: any) => ({
+          id: p.id,
+          name: p.label ?? p.name ?? '',
+          apiUrl: p.apiUrl ?? '',
+          apiKey: p.apiKey ?? '',
+          status: p.deletedAt ? 'trash' : (p.status ?? 'inactive'),
+          currentBalance: p.currentBalance ?? p.current_balance ?? 0,
+          successRate: 0,
+          avgResponseTime: 0,
+          createdAt: p.createdAt ? new Date(p.createdAt) : new Date(),
+          lastSync: p.updatedAt ? new Date(p.updatedAt) : new Date(),
+          deletedAt: p.deletedAt || null,
+          description: p.description
+        }));
         setProviders(uiProviders);
 
         if (filter !== 'trash') {
           testAllConnections();
-
           setTimeout(() => {
             fetchAllProviderBalances();
           }, 2000);
         }
-
-        console.log('Available providers for dropdown:', result.data.providers);
       } else {
-        console.error('Failed to fetch providers:', result.error);
-        showToast('Failed to fetch providers', 'error');
+        setProviders([]);
+        const errMsg = result?.error || (response.ok ? 'No providers data' : `Request failed (${response.status})`);
+        showToast(errMsg, 'error');
       }
     } catch (error) {
       console.error('Error fetching providers:', error);
+      setProviders([]);
       showToast('Failed to fetch providers', 'error');
     }
   };
@@ -571,20 +568,16 @@ const APIProvidersPage = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      console.log('🔄 loadData called in useEffect');
-      await fetchProviders(statusFilter);
-      setIsPageLoading(false);
-    };
-
-    console.log('🚀 useEffect triggered for initial loading');
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (!isPageLoading) {
-      fetchProviders(statusFilter);
-    }
+    let cancelled = false;
+    setIsPageLoading(true);
+    (async () => {
+      try {
+        await fetchProviders(statusFilter);
+      } finally {
+        if (!cancelled) setIsPageLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [statusFilter]);
 
   const showToast = (

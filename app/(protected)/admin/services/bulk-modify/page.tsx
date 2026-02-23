@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import {
   FaBox,
@@ -14,13 +14,12 @@ import {
   FaTimes 
 } from 'react-icons/fa';
 
+import useSWR from 'swr';
 import { useGetCategories } from '@/hooks/categories-fetch';
-import { useGetServices } from '@/hooks/service-fetch';
 import axiosInstance from '@/lib/axios-instance';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
 import { formatNumber } from '@/lib/utils';
-import { mutate } from 'swr';
 import { SelectCategoryModal } from '@/components/admin/services/bulk-modify/modals/select-category';
 
 const ServicesTable = dynamic(
@@ -29,6 +28,83 @@ const ServicesTable = dynamic(
   ),
   { ssr: false }
 );
+
+const BulkModifyTableSkeletonRow = () => (
+  <tr className="border-t dark:border-gray-700">
+    <td className="p-3">
+      <div className="h-6 w-16 gradient-shimmer rounded" />
+    </td>
+    <td className="p-3">
+      <div className="h-[42px] w-full gradient-shimmer rounded-lg" />
+    </td>
+    <td className="p-3">
+      <div className="h-[42px] w-20 gradient-shimmer rounded-lg" />
+    </td>
+    <td className="p-3">
+      <div className="h-[42px] w-24 gradient-shimmer rounded-lg" />
+    </td>
+    <td className="p-3">
+      <div className="h-[42px] w-20 gradient-shimmer rounded-lg" />
+    </td>
+    <td className="p-3">
+      <div className="h-[64px] w-full gradient-shimmer rounded-lg" />
+    </td>
+    <td className="p-3">
+      <div className="h-6 w-20 gradient-shimmer rounded-full" />
+    </td>
+  </tr>
+);
+
+const BulkModifyTableSkeletonRows = ({ rowCount = 5 }: { rowCount?: number }) => {
+  const rows = Array.from({ length: rowCount });
+  return (
+    <>
+      <div className="hidden lg:block overflow-x-auto">
+        <table className="w-full text-sm min-w-[1200px]">
+          <tbody>
+            {rows.map((_, rowIdx) => (
+              <BulkModifyTableSkeletonRow key={rowIdx} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="lg:hidden">
+        <div className="space-y-4 pt-2">
+          {rows.map((_, idx) => (
+            <div key={idx} className="card card-padding border-l-4 border-blue-500 dark:border-blue-400 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-6 w-16 gradient-shimmer rounded" />
+                <div className="h-6 w-20 gradient-shimmer rounded-full" />
+              </div>
+              <div className="mb-4">
+                <div className="h-4 w-24 gradient-shimmer rounded mb-2" />
+                <div className="h-10 w-full gradient-shimmer rounded-lg" />
+              </div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="h-4 w-20 gradient-shimmer rounded mb-2" />
+                  <div className="h-10 w-full gradient-shimmer rounded-lg" />
+                </div>
+                <div>
+                  <div className="h-4 w-20 gradient-shimmer rounded mb-2" />
+                  <div className="h-10 w-full gradient-shimmer rounded-lg" />
+                </div>
+              </div>
+              <div className="mb-4">
+                <div className="h-4 w-24 gradient-shimmer rounded mb-2" />
+                <div className="h-10 w-full gradient-shimmer rounded-lg" />
+              </div>
+              <div>
+                <div className="h-4 w-24 gradient-shimmer rounded mb-2" />
+                <div className="h-20 w-full gradient-shimmer rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
 
 const BulkModifyTableSkeleton = () => {
   const rows = Array.from({ length: 10 });
@@ -48,29 +124,7 @@ const BulkModifyTableSkeleton = () => {
           </thead>
           <tbody>
             {rows.map((_, rowIdx) => (
-              <tr key={rowIdx} className="border-t dark:border-gray-700">
-                <td className="p-3">
-                  <div className="h-6 w-16 gradient-shimmer rounded" />
-                </td>
-                <td className="p-3">
-                  <div className="h-[42px] w-full gradient-shimmer rounded-lg" />
-                </td>
-                <td className="p-3">
-                  <div className="h-[42px] w-20 gradient-shimmer rounded-lg" />
-                </td>
-                <td className="p-3">
-                  <div className="h-[42px] w-24 gradient-shimmer rounded-lg" />
-                </td>
-                <td className="p-3">
-                  <div className="h-[42px] w-20 gradient-shimmer rounded-lg" />
-                </td>
-                <td className="p-3">
-                  <div className="h-[64px] w-full gradient-shimmer rounded-lg" />
-                </td>
-                <td className="p-3">
-                  <div className="h-6 w-20 gradient-shimmer rounded-full" />
-                </td>
-              </tr>
+              <BulkModifyTableSkeletonRow key={rowIdx} />
             ))}
           </tbody>
         </table>
@@ -201,8 +255,7 @@ const BulkModifyPage = () => {
     setPageTitle('Bulk Modify Services', appName);
   }, [appName]);
 
-  const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading } = useGetCategories();
-  const { data: servicesData, error: servicesError, isLoading: servicesLoading } = useGetServices();
+  const { data: categoriesData, error: categoriesError, isLoading: categoriesLoading, mutate: mutateCategories } = useGetCategories();
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -216,12 +269,35 @@ const BulkModifyPage = () => {
 
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
-    limit: 20,
+    limit: 25,
     total: 0,
     totalPages: 0,
     hasNext: false,
     hasPrev: false,
   });
+
+  const ALL_LIMIT = 100000;
+  const INFINITE_CHUNK_SIZE = 100;
+  const effectiveLimit = Math.min(pagination.limit, ALL_LIMIT);
+  const isInfiniteScrollMode = effectiveLimit > INFINITE_CHUNK_SIZE;
+
+  const firstChunkKey = isInfiniteScrollMode
+    ? `/api/admin/services?offset=0&limit=${INFINITE_CHUNK_SIZE}&search=${encodeURIComponent(searchTerm)}&filter=all${selectedCategory ? `&categoryId=${selectedCategory}` : ''}`
+    : null;
+  const singlePageKey = !isInfiniteScrollMode
+    ? `/api/admin/services?offset=${(pagination.page - 1) * effectiveLimit}&limit=${effectiveLimit}&search=${encodeURIComponent(searchTerm)}&filter=all${selectedCategory ? `&categoryId=${selectedCategory}` : ''}`
+    : null;
+  const servicesKey = isInfiniteScrollMode ? firstChunkKey! : singlePageKey!;
+
+  const { data: servicesData, error: servicesError, isLoading: servicesLoading, mutate: mutateServices } = useSWR(servicesKey, (url: string) => axiosInstance.get(url).then((r) => r.data), {
+    revalidateOnFocus: false,
+    refreshInterval: 0,
+  });
+
+  const [accumulatedServices, setAccumulatedServices] = useState<Service[]>([]);
+  const [infiniteTotal, setInfiniteTotal] = useState(0);
+  const [infiniteLoadingMore, setInfiniteLoadingMore] = useState(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
 
   const [toast, setToast] = useState<{
     message: string;
@@ -250,51 +326,60 @@ const BulkModifyPage = () => {
   }, [categoriesData]);
 
   useEffect(() => {
-    if (servicesData?.data) {
-      setLocalServicesLoading(true);
-      if (selectedCategory) {
-
-        const categoryServices = servicesData.data.filter((service: Service) => 
-          service.categoryId === parseInt(selectedCategory.toString()) || service.category?.id === parseInt(selectedCategory.toString())
-        );
-        setServices(categoryServices);
-        showToast(`Loaded ${categoryServices.length} services for selected category`, 'success');
-      } else {
-
-        setServices(servicesData.data);
-        showToast(`Loaded ${servicesData.data.length} services`, 'success');
-      }
-      setLocalServicesLoading(false);
-      setEditedServices({});
-      setHasChanges(false);
+    if (!servicesData?.data) return;
+    const total = servicesData.total ?? servicesData.data.length;
+    if (isInfiniteScrollMode) {
+      setAccumulatedServices(servicesData.data);
+      setInfiniteTotal(total);
+      setPagination(prev => ({ ...prev, total, totalPages: 1, hasNext: Boolean(servicesData.hasMore), hasPrev: false }));
+    } else {
+      setServices(servicesData.data);
+      const totalPages = Math.ceil(total / effectiveLimit) || 1;
+      setPagination(prev => ({
+        ...prev,
+        total,
+        totalPages,
+        hasNext: Boolean(servicesData.hasMore),
+        hasPrev: prev.page > 1,
+      }));
     }
-  }, [selectedCategory, servicesData, showToast]);
+    setEditedServices({});
+    setHasChanges(false);
+  }, [servicesData, effectiveLimit, isInfiniteScrollMode]);
 
-  const filteredServices = services.filter(service =>
-    service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.provider?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.category?.category_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchMoreInfinite = useCallback(async () => {
+    if (infiniteLoadingMore) return;
+    const currentLen = accumulatedServices.length;
+    const cap = Math.min(infiniteTotal, effectiveLimit);
+    if (currentLen >= cap) return;
+    const nextChunkSize = Math.min(INFINITE_CHUNK_SIZE, cap - currentLen);
+    setInfiniteLoadingMore(true);
+    try {
+      const url = `/api/admin/services?offset=${currentLen}&limit=${nextChunkSize}&search=${encodeURIComponent(searchTerm)}&filter=all${selectedCategory ? `&categoryId=${selectedCategory}` : ''}`;
+      const { data } = await axiosInstance.get(url);
+      const list = data?.data ?? [];
+      setAccumulatedServices(prev => [...prev, ...list]);
+    } finally {
+      setInfiniteLoadingMore(false);
+    }
+  }, [accumulatedServices.length, infiniteTotal, effectiveLimit, infiniteLoadingMore, searchTerm, selectedCategory]);
 
   useEffect(() => {
-    const total = filteredServices.length;
-    const totalPages = Math.ceil(total / pagination.limit);
-    setPagination(prev => ({
-      ...prev,
-      total,
-      totalPages,
-      hasNext: prev.page < totalPages,
-      hasPrev: prev.page > 1
-    }));
-  }, [filteredServices.length, pagination.limit]);
+    if (!isInfiniteScrollMode || !loadMoreSentinelRef.current) return;
+    const el = loadMoreSentinelRef.current;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const [e] = entries;
+        if (e?.isIntersecting) fetchMoreInfinite();
+      },
+      { root: null, rootMargin: '200px', threshold: 0 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [isInfiniteScrollMode, fetchMoreInfinite]);
 
-  const getPaginatedData = () => {
-    const startIndex = (pagination.page - 1) * pagination.limit;
-    const endIndex = startIndex + pagination.limit;
-    return filteredServices.slice(startIndex, endIndex);
-  };
+  const filteredServices = isInfiniteScrollMode ? accumulatedServices : services;
+  const getPaginatedData = () => (isInfiniteScrollMode ? accumulatedServices : services);
 
   const handleFieldChange = (serviceId: string | number, field: keyof Service, value: string | number) => {
     setEditedServices(prev => ({
@@ -322,19 +407,15 @@ const BulkModifyPage = () => {
   };
 
   const handleRefresh = () => {
-    if (selectedCategory) {
-      setLocalServicesLoading(true);
-
-      mutate('/api/admin/services?page=1&limit=500&search=');
-      mutate('/api/admin/categories/get-categories');
-
-      setTimeout(() => {
-        setLocalServicesLoading(false);
+    setLocalServicesLoading(true);
+    if (isInfiniteScrollMode) setAccumulatedServices([]);
+    mutateServices()
+      .then(() => {
         setEditedServices({});
         setHasChanges(false);
         showToast('Services refreshed successfully!', 'success');
-      }, 1000);
-    }
+      })
+      .finally(() => setLocalServicesLoading(false));
   };
 
   const handleSaveChanges = async () => {
@@ -395,8 +476,8 @@ const BulkModifyPage = () => {
         await Promise.all(updatePromises);
       }
 
-      await mutate('/api/admin/services?page=1&limit=500&search=');
-      await mutate('/api/admin/categories/get-categories');
+      await mutateServices();
+      await mutateCategories();
 
       setEditedServices({});
       setHasChanges(false);
@@ -431,8 +512,8 @@ const BulkModifyPage = () => {
             </p>
             <button 
               onClick={() => {
-                mutate('/api/admin/categories/get-categories');
-                mutate('/api/admin/services?page=1&limit=500&search=');
+                mutateCategories();
+                mutateServices();
               }}
               className="btn btn-primary mt-4"
             >
@@ -460,32 +541,33 @@ const BulkModifyPage = () => {
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mb-2 md:mb-0">
-              <select 
-                value={pagination.limit === filteredServices.length ? 'all' : pagination.limit}
+              <select
+                value={pagination.limit === ALL_LIMIT ? 'all' : pagination.limit}
                 onChange={(e) => {
                   setPaginationLoading(true);
-                  setPagination(prev => ({ 
-                    ...prev, 
-                    limit: e.target.value === 'all' ? filteredServices.length : parseInt(e.target.value), 
-                    page: 1 
+                  const val = e.target.value;
+                  setPagination((prev) => ({
+                    ...prev,
+                    limit: val === 'all' ? ALL_LIMIT : parseInt(val, 10),
+                    page: 1,
                   }));
-
-                  setTimeout(() => {
-                    setPaginationLoading(false);
-                  }, 800);
+                  setTimeout(() => setPaginationLoading(false), 300);
                 }}
                 disabled={paginationLoading || isInitialLoading}
                 className="pl-4 pr-8 py-2.5 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white transition-all duration-200 appearance-none cursor-pointer text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Services per page"
               >
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
                 <option value="all">All</option>
               </select>
 
               <button
                 onClick={handleRefresh}
-                disabled={localServicesLoading || isInitialLoading || !selectedCategory}
+                disabled={localServicesLoading || isInitialLoading}
                 className="btn btn-primary flex items-center gap-2 px-3 py-2.5"
               >
                 <FaSync className={localServicesLoading ? 'animate-spin' : ''} />
@@ -582,31 +664,25 @@ const BulkModifyPage = () => {
                   Clear Filters
                 </button>
               </div>
-            ) : selectedCategory && getPaginatedData().length === 0 ? (
-              <div className="text-center py-12">
-                <FaBox
-                  className="h-16 w-16 mx-auto mb-4 text-gray-400 dark:text-gray-500"
-                />
-                <h3
-                  className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-300"
-                >
-                  No services found
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {searchTerm ? 'No services match your search criteria.' : 'This category has no services yet.'}
-                </p>
-              </div>
             ) : (
-              <ServicesTable
-                services={getPaginatedData()}
-                editedServices={editedServices}
-                pagination={pagination}
-                localServicesLoading={localServicesLoading}
-                onFieldChange={handleFieldChange}
-                getCurrentValue={getCurrentValue}
-                formatID={formatID}
-                onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
-              />
+              <>
+                <ServicesTable
+                  services={getPaginatedData()}
+                  editedServices={editedServices}
+                  pagination={pagination}
+                  localServicesLoading={localServicesLoading}
+                  onFieldChange={handleFieldChange}
+                  getCurrentValue={getCurrentValue}
+                  formatID={formatID}
+                  onPageChange={(page) => setPagination((prev) => ({ ...prev, page }))}
+                />
+                {isInfiniteScrollMode && (
+                  <>
+                    <div ref={loadMoreSentinelRef} className="h-4 min-h-4" aria-hidden />
+                    {infiniteLoadingMore && <BulkModifyTableSkeletonRows rowCount={5} />}
+                  </>
+                )}
+              </>
               )}
           </div>
         </div>

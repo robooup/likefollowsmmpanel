@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const iconPath = generalSettings.siteIcon && generalSettings.siteIcon.trim() !== '' 
       ? generalSettings.siteIcon 
       : '';
-    const siteUrl = generalSettings.siteUrl || process.env.NEXT_PUBLIC_APP_URL || 'https://likefollowsmmpanel.suitableit.com';
+    const siteUrl = generalSettings.siteUrl || process.env.NEXT_PUBLIC_APP_URL;
 
     const manifest = {
       id: '/',
