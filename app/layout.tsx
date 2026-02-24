@@ -1,4 +1,4 @@
-import '@/assets/styles/globals.css';
+import '@/app/globals.css';
 import { auth } from '@/auth';
 import { CustomCodesInjector } from '@/components/custom-codes-injector';
 import { SettingsInvalidationListener } from '@/components/settings-invalidation-listener';
