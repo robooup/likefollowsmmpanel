@@ -652,8 +652,11 @@ function NewOrder() {
           setCategoriesWithServices(combined);
 
           if (combined.length > 0) {
+            const currentInList = selectedCategory && combined.some((c: any) => String(c.id) === String(selectedCategory));
             if (platformFromUrl && platformFromUrl !== 'Everything') {
-              setSelectedCategory(combined[0].id);
+              if (!selectedCategory || !currentInList) {
+                setSelectedCategory(combined[0].id);
+              }
             } else if (!selectedCategory) {
               setSelectedCategory(combined[0].id);
             }
@@ -709,8 +712,11 @@ function NewOrder() {
       setCategoriesWithServices(regularCategories);
 
       if (regularCategories.length > 0) {
+        const currentInList = selectedCategory && regularCategories.some((c: any) => String(c.id) === String(selectedCategory));
         if (platformFromUrl && platformFromUrl !== 'Everything') {
-          setSelectedCategory(regularCategories[0].id);
+          if (!selectedCategory || !currentInList) {
+            setSelectedCategory(regularCategories[0].id);
+          }
         } else if (!selectedCategory) {
           setSelectedCategory(regularCategories[0].id);
         }
