@@ -636,21 +636,9 @@ export const ServicesTable: React.FC<ServicesTableProps> = ({
                             <div
                               className="text-sm font-medium text-gray-900 dark:text-gray-100"
                             >
-                              {(() => {
-                                try {
-                                  const updateData =
-                                    service?.updateText
-                                      ? JSON.parse(
-                                          service.updateText
-                                        )
-                                      : null;
-                                  return (
-                                    updateData?.provider || 'Self'
-                                  );
-                                } catch {
-                                  return 'Self';
-                                }
-                              })()}
+                              {service?.providerId
+                                ? getProviderNameById(service.providerId, service.provider)
+                                : 'Self'}
                             </div>
                           </td>
                           <td className="p-3">

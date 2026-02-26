@@ -106,7 +106,6 @@ async function handleRequest(req: NextRequest) {
 }
 
 async function handleServices(_params: Params) {
-  const MAX_SERVICES_API = 5000;
   const services = await db.services.findMany({
     where: {
       status: 'active',
@@ -124,7 +123,6 @@ async function handleServices(_params: Params) {
       category: { select: { category_name: true } },
     },
     orderBy: { id: 'asc' },
-    take: MAX_SERVICES_API,
   });
 
   const { servicePackageType } = await import('@/lib/service-types');

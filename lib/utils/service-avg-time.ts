@@ -12,10 +12,6 @@ function formatAvgTime(avgSeconds: number): string {
   return `${hours} hours and ${minutes} minutes`;
 }
 
-/**
- * Recalculates and stores avg_time for one service from the last 10 completed orders
- * (order start to end time). Call this whenever an order is marked completed.
- */
 export async function updateServiceAvgTime(
   serviceId: number,
   client?: DbLike

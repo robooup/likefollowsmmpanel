@@ -160,8 +160,12 @@ export async function PATCH(
       return { updatedTransaction, currentUser, balanceChange, notificationMessage };
     });
 
+    const isPendingToSuccess =
+      updateData.status === 'Success' &&
+      transaction.status !== 'Success' &&
+      transaction.status !== 'approved';
     try {
-      if (result.currentUser.email && notificationMessage) {
+      if (result.currentUser.email && isPendingToSuccess) {
         const usdAmount = typeof transaction.amount === 'object' && transaction.amount !== null
           ? Number(transaction.amount)
           : Number(transaction.amount || 0);
