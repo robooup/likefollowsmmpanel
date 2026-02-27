@@ -9,7 +9,7 @@ export async function GET() {
       }
     });
 
-    const ticketSystemEnabled = settings?.ticketSystemEnabled ?? true;
+    const ticketSystemEnabled = settings?.ticketSystemEnabled ?? false;
     
     return NextResponse.json({
       success: true,
@@ -19,7 +19,7 @@ export async function GET() {
     console.error('Error checking ticket system status:', error);
     return NextResponse.json({
       success: true,
-      ticketSystemEnabled: true
+      ticketSystemEnabled: false
     });
   }
 }

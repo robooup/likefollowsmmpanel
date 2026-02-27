@@ -360,7 +360,7 @@ model TicketNotes {
 
 model ContactSettings {
   id                   Int                 @id @default(autoincrement())
-  contactSystemEnabled Boolean             @default(true)
+  contactSystemEnabled Boolean             @default(false)
   maxPendingContacts   String              @default("3")
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -370,31 +370,35 @@ model ContactSettings {
 }
 
 model ContactCategories {
-  id                Int             @id @default(autoincrement())
+  id                Int               @id @default(autoincrement())
   name              String
   contactSettingsId Int
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  contactSettings   ContactSettings @relation(fields: [contactSettingsId], references: [id], onDelete: Cascade)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  contactSettings   ContactSettings  @relation(fields: [contactSettingsId], references: [id], onDelete: Cascade)
+  contactMessages   ContactMessages[]
 
   @@index([contactSettingsId], map: "contact_categories_contactSettingsId_idx")
   @@map("contact_categories")
 }
 
 model ContactMessages {
-  id          Int            @id @default(autoincrement())
-  userId      Int
-  subject     String
-  message     String         @db.Text
-  status      String         @default("Unread")
-  categoryId  Int
-  attachments String?        @db.Text
-  adminReply  String?        @db.Text
-  repliedAt   DateTime?
-  repliedBy   Int?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @default(now()) @updatedAt
-  notes       ContactNotes[]
+  id             Int               @id @default(autoincrement())
+  userId         Int
+  subject        String
+  message        String            @db.Text
+  status         String            @default("Unread")
+  categoryId     Int
+  attachments    String?           @db.Text
+  adminReply     String?           @db.Text
+  repliedAt      DateTime?
+  repliedBy      Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now()) @updatedAt
+  notes          ContactNotes[]
+  user           Users             @relation(fields: [userId], references: [id])
+  category       ContactCategories @relation(fields: [categoryId], references: [id])
+  repliedByUser  Users?             @relation("ContactRepliedBy", fields: [repliedBy], references: [id])
 
   @@index([userId])
   @@index([categoryId])
@@ -650,7 +654,7 @@ model ServiceUpdateLogs {
 
 model TicketSettings {
   id                  Int              @id @default(autoincrement())
-  ticketSystemEnabled Boolean          @default(true)
+  ticketSystemEnabled Boolean          @default(false)
   maxPendingTickets   String           @default("3")
   createdAt           DateTime         @default(now())
   updatedAt           DateTime
@@ -704,6 +708,8 @@ model Users {
   blogPosts                                     BlogPosts[]
   cancelRequests                                CancelRequests[]
   contactNotes                                  ContactNotes[]
+  contactMessages                               ContactMessages[]
+  repliedContactMessages                        ContactMessages[]         @relation("ContactRepliedBy")
   favouriteCat                                  FavoriteCategories[]
   favoriteServices                              FavoriteServices[]
   newOrders                                     NewOrders[]

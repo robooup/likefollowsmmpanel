@@ -20,6 +20,7 @@ interface MediaAttachModalProps {
   maxFileSize?: number;
   uploadHint?: string;
   hideUploadPath?: boolean;
+  uploadType?: string;
 }
 
 const ANIMATION_DURATION = 300;
@@ -36,6 +37,7 @@ const MediaAttachModal: React.FC<MediaAttachModalProps> = ({
   maxFileSize,
   uploadHint,
   hideUploadPath = false,
+  uploadType: uploadTypeProp = 'admin_uploads',
 }) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'library'>('upload');
   const [isDragging, setIsDragging] = useState(false);
@@ -46,7 +48,8 @@ const MediaAttachModal: React.FC<MediaAttachModalProps> = ({
   const [libraryPath, setLibraryPath] = useState('');
   const [libraryLoading, setLibraryLoading] = useState(false);
 
-  const uploadPath = currentPath === undefined ? 'general' : currentPath;
+  const uploadPath = uploadTypeProp === 'admin_media' ? 'general' : (currentPath === undefined ? 'general' : currentPath);
+  const uploadType = uploadTypeProp;
 
   useEffect(() => {
     if (isOpen) {
@@ -138,7 +141,7 @@ const MediaAttachModal: React.FC<MediaAttachModalProps> = ({
 
       try {
         const formData = new FormData();
-        formData.append('uploadType', 'admin_uploads');
+        formData.append('uploadType', uploadType);
         formData.append('uploadPath', uploadPath);
         fileArray.forEach((file) => formData.append('files', file));
 
@@ -168,7 +171,7 @@ const MediaAttachModal: React.FC<MediaAttachModalProps> = ({
         setIsUploading(false);
       }
     },
-    [uploadPath, handleClose, onUploadSuccess, onFilesUploaded, singleFile, accept, fileMatchesAccept, maxFileSize]
+    [uploadPath, uploadType, handleClose, onUploadSuccess, onFilesUploaded, singleFile, accept, fileMatchesAccept, maxFileSize]
   );
 
   const handleDrop = useCallback(

@@ -72,7 +72,7 @@ class ContactDB {
       if (!settings) {
         settings = await this.prisma.contactSettings.create({
           data: {
-            contactSystemEnabled: true,
+            contactSystemEnabled: false,
             maxPendingContacts: 'unlimited'
           }
         });
@@ -177,53 +177,40 @@ class ContactDB {
     offset?: number;
   }) {
     try {
-
-      let whereClause = 'WHERE 1=1';
-      const params: any[] = [];
+      const where: any = {};
 
       if (filters?.status && filters.status !== 'All') {
-        whereClause += ' AND cm.status = ?';
-        params.push(filters.status);
+        where.status = filters.status;
       }
 
-      if (filters?.search) {
-        whereClause += ' AND (cm.subject LIKE ? OR cm.message LIKE ? OR u.username LIKE ? OR u.email LIKE ?)';
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      if (filters?.search && filters.search.trim()) {
+        const term = filters.search.trim();
+        where.OR = [
+          { subject: { contains: term, mode: 'insensitive' } },
+          { message: { contains: term, mode: 'insensitive' } },
+          { user: { username: { contains: term, mode: 'insensitive' } } },
+          { user: { email: { contains: term, mode: 'insensitive' } } },
+        ];
       }
 
-      let limitClause = '';
-      if (filters?.limit) {
-        const safeLimit = Math.max(1, Math.min(1000, parseInt(String(filters.limit)) || 20));
-        limitClause = ` LIMIT ?`;
-        params.push(safeLimit);
-        if (filters?.offset) {
-          const safeOffset = Math.max(0, parseInt(String(filters.offset)) || 0);
-          limitClause += ` OFFSET ?`;
-          params.push(safeOffset);
-        }
-      }
+      const limit = filters?.limit
+        ? Math.max(1, Math.min(1000, parseInt(String(filters.limit)) || 20))
+        : 20;
+      const offset = filters?.offset ? Math.max(0, parseInt(String(filters.offset)) || 0) : 0;
 
-      const query = `
-        SELECT
-          cm.*,
-          u.username,
-          u.email,
-          u.name,
-          cc.name as categoryName,
-          ru.username as repliedByUsername
-        FROM contact_messages cm
-        LEFT JOIN users u ON cm.userId = u.id
-        LEFT JOIN contact_categories cc ON cm.categoryId = cc.id
-        LEFT JOIN users ru ON cm.repliedBy = ru.id
-        ${whereClause}
-        ORDER BY cm.createdAt DESC
-        ${limitClause}
-      `;
+      const messages = await this.prisma.contactMessages.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+        include: {
+          user: { select: { username: true, email: true, name: true } },
+          category: { select: { name: true } },
+          repliedByUser: { select: { username: true } },
+        },
+      });
 
-      const messages = await this.prisma.$queryRawUnsafe(query, ...params) as any[];
-
-      const formattedMessages = messages.map((msg: any) => ({
+      return messages.map((msg: any) => ({
         id: msg.id,
         userId: msg.userId,
         subject: msg.subject,
@@ -237,19 +224,15 @@ class ContactDB {
         createdAt: msg.createdAt,
         updatedAt: msg.updatedAt,
         user: {
-          username: msg.username || 'Unknown User',
-          email: msg.email || 'No Email',
-          name: msg.name || null
+          username: msg.user?.username || 'Unknown User',
+          email: msg.user?.email || 'No Email',
+          name: msg.user?.name || null,
         },
         category: {
-          name: msg.categoryName || 'Unknown Category'
+          name: msg.category?.name || 'Unknown Category',
         },
-        repliedByUser: msg.repliedByUsername ? {
-          username: msg.repliedByUsername
-        } : null
+        repliedByUser: msg.repliedByUser ? { username: msg.repliedByUser.username } : null,
       }));
-
-      return formattedMessages;
     } catch (error) {
       console.error('Error getting contact messages:', error);
       return [];
@@ -260,18 +243,29 @@ class ContactDB {
     try {
       const query = `
         SELECT
-          cm.*,
+          cm.id,
+          cm."userId",
+          cm."subject",
+          cm."message",
+          cm."status",
+          cm."categoryId",
+          cm."attachments",
+          cm."adminReply",
+          cm."repliedAt",
+          cm."repliedBy",
+          cm."createdAt",
+          cm."updatedAt",
           u.username,
           u.email,
           u.name,
-          u.image as userImage,
-          cc.name as categoryName,
-          ru.username as repliedByUsername
+          u.image as "userImage",
+          cc.name as "categoryName",
+          ru.username as "repliedByUsername"
         FROM contact_messages cm
-        LEFT JOIN users u ON cm.userId = u.id
-        LEFT JOIN contact_categories cc ON cm.categoryId = cc.id
-        LEFT JOIN users ru ON cm.repliedBy = ru.id
-        WHERE cm.id = ?
+        LEFT JOIN users u ON cm."userId" = u.id
+        LEFT JOIN contact_categories cc ON cm."categoryId" = cc.id
+        LEFT JOIN users ru ON cm."repliedBy" = ru.id
+        WHERE cm.id = $1
       `;
 
       const messages = await this.prisma.$queryRawUnsafe(query, id) as any[];
@@ -283,13 +277,19 @@ class ContactDB {
       if (includeNotes) {
         const notesQuery = `
           SELECT
-            cn.*,
+            cn.id,
+            cn."messageId",
+            cn."userId",
+            cn.content,
+            cn."isPrivate",
+            cn."createdAt",
+            cn."updatedAt",
             u.username as admin_username,
             u.name as admin_name
           FROM contact_notes cn
-          LEFT JOIN users u ON cn.userId = u.id
-          WHERE cn.messageId = ?
-          ORDER BY cn.createdAt DESC
+          LEFT JOIN users u ON cn."userId" = u.id
+          WHERE cn."messageId" = $1
+          ORDER BY cn."createdAt" DESC
         `;
         notes = await this.prisma.$queryRawUnsafe(notesQuery, id) as any[];
       }
@@ -297,9 +297,9 @@ class ContactDB {
       const userStatsQuery = `
         SELECT 
           COUNT(*) as total_messages,
-          SUM(CASE WHEN adminReply IS NULL OR adminReply = '' THEN 1 ELSE 0 END) as open_messages
+          SUM(CASE WHEN "adminReply" IS NULL OR "adminReply" = '' THEN 1 ELSE 0 END) as open_messages
         FROM contact_messages 
-        WHERE userId = ?
+        WHERE "userId" = $1
       `;
       const userStats = await this.prisma.$queryRawUnsafe(userStatsQuery, message.userId) as any[];
       const stats = userStats[0] || { total_messages: 0, open_messages: 0 };

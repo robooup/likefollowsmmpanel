@@ -576,6 +576,7 @@ const ContactDetailsPage = ({ params }: { params: Promise<{ id: string }> }) => 
           formData.append('files', file);
         });
         formData.append('uploadType', 'admin_uploads');
+        formData.append('uploadPath', 'contact-messages');
 
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',

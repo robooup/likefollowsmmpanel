@@ -106,18 +106,6 @@ function ContactSupportPage() {
           console.error('Error fetching support email:', error);
         }
 
-        setCategories([
-          { id: 1, name: 'General Inquiry' },
-          { id: 2, name: 'Business Partnership' },
-          { id: 3, name: 'Media & Press' }
-        ]);
-
-        setContactFormData({
-          userPendingCount: 0,
-          maxPendingContacts: 3,
-          canSubmit: true
-        });
-
         const response = await fetch('/api/contact-support');
         const data = await response.json();
 
@@ -130,7 +118,6 @@ function ContactSupportPage() {
           });
         } else {
           console.log('API error:', data.error);
-
         }
       } catch (error) {
         console.error('Error loading contact form data:', error);

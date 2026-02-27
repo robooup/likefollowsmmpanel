@@ -70,8 +70,8 @@ export default function SideBarNav({
 }: SideBarNavProps) {
   const path = usePathname() || '';
   const isAdmin = session?.user?.role === 'admin' || session?.user?.role === 'moderator';
-  const [ticketSystemEnabled, setTicketSystemEnabled] = useState(true);
-  const [contactSystemEnabled, setContactSystemEnabled] = useState(true);
+  const [ticketSystemEnabled, setTicketSystemEnabled] = useState(false);
+  const [contactSystemEnabled, setContactSystemEnabled] = useState(false);
   const [affiliateSystemEnabled, setAffiliateSystemEnabled] = useState(true);
   const [childPanelSellingEnabled, setChildPanelSellingEnabled] = useState(true);
   const [massOrderEnabled, setMassOrderEnabled] = useState(true);
@@ -113,7 +113,7 @@ export default function SideBarNav({
         const response = await fetch('/api/ticket-system-status');
         if (response.ok) {
           const data = await response.json();
-          setTicketSystemEnabled(data.ticketSystemEnabled ?? true);
+          setTicketSystemEnabled(data.ticketSystemEnabled ?? false);
         }
       } catch (error) {
         console.error('Error fetching ticket settings:', error);
@@ -131,7 +131,7 @@ export default function SideBarNav({
         const response = await fetch('/api/contact-system-status');
         if (response.ok) {
           const data = await response.json();
-          setContactSystemEnabled(data.contactSystemEnabled ?? true);
+          setContactSystemEnabled(data.contactSystemEnabled ?? false);
         }
       } catch (error) {
         console.error('Error fetching contact settings:', error);

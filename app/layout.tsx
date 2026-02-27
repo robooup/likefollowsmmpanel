@@ -34,7 +34,7 @@ const nunito = Nunito({
 export async function generateMetadata(): Promise<Metadata> {
   const appName = await getAppName();
 
-  const faviconUrl = '/api/favicon';
+  const faviconUrl = `/api/favicon?t=${Date.now()}`;
 
   return {
     title: {
@@ -68,14 +68,15 @@ export default async function RootLayout({
   const session = await auth();
   const serverCurrency = await getUserCurrency();
   const appName = await getAppName();
+  const faviconHref = `/api/favicon?t=${Date.now()}`;
 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/api/manifest" />
-        <link rel="icon" href="/api/favicon" type="image/png" />
-        <link rel="shortcut icon" href="/api/favicon" type="image/png" />
-        <link rel="apple-touch-icon" href="/api/favicon" />
+        <link rel="icon" href={faviconHref} type="image/png" />
+        <link rel="shortcut icon" href={faviconHref} type="image/png" />
+        <link rel="apple-touch-icon" href={faviconHref} />
         <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet" />
         <script
           dangerouslySetInnerHTML={{

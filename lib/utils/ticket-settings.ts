@@ -6,7 +6,7 @@ interface TicketSettings {
 }
 
 const DEFAULT_TICKET_SETTINGS: TicketSettings = {
-  ticketSystemEnabled: true,
+  ticketSystemEnabled: false,
   maxPendingTickets: '3',
 };
 

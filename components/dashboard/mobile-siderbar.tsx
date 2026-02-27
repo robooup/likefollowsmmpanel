@@ -35,7 +35,7 @@ export default function MobileSidebar() {
             <div className="logo-container w-full flex items-center">
               <Link href="/" onClick={() => setOpen(false)}>
                 <Image 
-                  src="/logo.png" 
+                  src="/general/logo.png" 
                   alt="Like Follow SMM Panel Logo" 
                   width={280} 
                   height={60} 

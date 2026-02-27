@@ -399,25 +399,21 @@ const GeneralSettingsPage = () => {
   });
 
   const [ticketSettings, setTicketSettings] = useState<TicketSettings>({
-    ticketSystemEnabled: true,
+    ticketSystemEnabled: false,
     maxPendingTickets: '3',
     subjects: [],
   });
 
   const [originalTicketSettings, setOriginalTicketSettings] = useState<TicketSettings>({
-    ticketSystemEnabled: true,
+    ticketSystemEnabled: false,
     maxPendingTickets: '3',
     subjects: [],
   });
 
   const [contactSettings, setContactSettings] = useState<ContactSettings>({
-    contactSystemEnabled: true,
+    contactSystemEnabled: false,
     maxPendingContacts: 'unlimited',
-    categories: [
-      { id: 1, name: 'General Inquiry' },
-      { id: 2, name: 'Business Partnership' },
-      { id: 3, name: 'Media & Press' },
-    ],
+    categories: [],
   });
 
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
@@ -719,7 +715,9 @@ const GeneralSettingsPage = () => {
 
         setOriginalTicketSettings(ticketSettings);
       } else {
-        showToast('Failed to save ticket settings', 'error');
+        const errData = await response.json().catch(() => ({}));
+        const msg = errData?.error || 'Failed to save ticket settings. Add at least one subject.';
+        showToast(msg, 'error');
       }
     } catch (error) {
       console.error('Error saving ticket settings:', error);
@@ -746,7 +744,8 @@ const GeneralSettingsPage = () => {
         showToast('Contact settings saved successfully!', 'success');
         (await import('@/lib/settings-invalidation')).dispatchSettingsInvalidated('contact');
       } else {
-        showToast('Failed to save contact settings', 'error');
+        const msg = responseData?.error || 'Failed to save contact settings. Add at least one category.';
+        showToast(msg, 'error');
       }
     } catch (error) {
       console.error('Error saving contact settings:', error);
@@ -784,18 +783,6 @@ const GeneralSettingsPage = () => {
   };
 
   const applyUploadedFile = async (field: 'siteIcon' | 'siteLogo' | 'siteDarkLogo' | 'thumbnail', fileUrl: string) => {
-    const existingPath = field === 'thumbnail' ? metaSettings.thumbnail : generalSettings[field];
-    if (existingPath?.trim()) {
-      try {
-        await fetch('/api/admin/delete-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imagePath: existingPath }),
-        });
-      } catch {
-      }
-    }
-
     if (field === 'thumbnail') {
       setMetaSettings(prev => ({ ...prev, [field]: fileUrl }));
       showToast('Thumbnail selected. Click Save Meta Settings to apply.', 'success');
@@ -806,8 +793,6 @@ const GeneralSettingsPage = () => {
         delete updated[field];
         return updated;
       });
-      const fieldName = field === 'siteIcon' ? 'Site Icon' : field === 'siteLogo' ? 'Site Logo' : 'Site Dark Logo';
-      showToast(`${fieldName} selected. Click Save General Settings to apply.`, 'success');
     }
   };
 

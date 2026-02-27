@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { hasPermission } from '@/lib/permissions';
+import { isR2Configured, listR2Objects } from '@/lib/r2';
 import { NextResponse } from 'next/server';
 import { readdir, stat } from 'fs/promises';
 import path from 'path';
@@ -88,14 +89,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
 
-    const publicDir = path.join(process.cwd(), 'public');
-    const targetDir = normalizedPath ? path.join(publicDir, normalizedPath) : publicDir;
-    const resolvedDir = path.resolve(targetDir);
-    if (!resolvedDir.startsWith(path.resolve(publicDir))) {
-      return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
-    }
+    let mediaItems: MediaItem[];
 
-    const mediaItems = await getMediaItemsInDir(targetDir, normalizedPath);
+    if (isR2Configured()) {
+      mediaItems = await listR2Objects(normalizedPath);
+    } else {
+      const publicDir = path.join(process.cwd(), 'public');
+      const targetDir = normalizedPath ? path.join(publicDir, normalizedPath) : publicDir;
+      const resolvedDir = path.resolve(targetDir);
+      if (!resolvedDir.startsWith(path.resolve(publicDir))) {
+        return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+      }
+      mediaItems = await getMediaItemsInDir(targetDir, normalizedPath);
+    }
 
     return NextResponse.json({
       success: true,

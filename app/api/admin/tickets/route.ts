@@ -68,15 +68,20 @@ export async function GET(request: NextRequest) {
     const where: any = {};
 
     if (status && status !== 'all') {
-      const statusMap: { [key: string]: string } = {
-        'open': 'pending',
-        'answered': 'in_progress',
-        'customer_reply': 'pending',
-        'on_hold': 'on_hold',
-        'in_progress': 'in_progress',
-        'closed': 'closed'
+      const statusLower = status.toLowerCase().replace(/\s+/g, '_');
+      const statusMap: { [key: string]: string | string[] } = {
+        'open': ['Open', 'pending'],
+        'answered': ['in_progress', 'resolved'],
+        'customer_reply': ['Open', 'pending'],
+        'on_hold': ['on_hold'],
+        'in_progress': ['in_progress'],
+        'closed': ['closed'],
+        'in progress': ['in_progress'],
       };
-      where.status = statusMap[status] || status;
+      const dbStatus = statusMap[statusLower] ?? statusMap[status] ?? status;
+      where.status = Array.isArray(dbStatus)
+        ? { in: dbStatus }
+        : dbStatus;
     }
 
     if (search) {

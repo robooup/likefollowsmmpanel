@@ -17,7 +17,7 @@ export async function GET() {
     const categories = await contactDB.getContactCategories();
 
     const formattedSettings = {
-      contactSystemEnabled: settings?.contactSystemEnabled ?? true,
+      contactSystemEnabled: settings?.contactSystemEnabled ?? false,
       maxPendingContacts: settings?.maxPendingContacts ?? 'unlimited',
       categories: categories.map((cat) => ({
         id: cat.id,
@@ -52,11 +52,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Contact settings data is required' }, { status: 400 });
     }
 
+    const isContactSystemEnabled = contactSettings.contactSystemEnabled ?? false;
+
     if (!contactSettings.categories || !Array.isArray(contactSettings.categories)) {
       return NextResponse.json({ error: 'Categories must be an array' }, { status: 400 });
     }
 
-    if (contactSettings.categories.length === 0) {
+    if (isContactSystemEnabled && contactSettings.categories.length === 0) {
       return NextResponse.json({ error: 'At least one category is required' }, { status: 400 });
     }
 
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const settingsData = {
-      contactSystemEnabled: contactSettings.contactSystemEnabled ?? true,
+      contactSystemEnabled: contactSettings.contactSystemEnabled ?? false,
       maxPendingContacts: contactSettings.maxPendingContacts
     };
     console.log('🔍 About to upsert with data:', JSON.stringify(settingsData, null, 2));

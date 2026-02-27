@@ -5,7 +5,7 @@ import { clearTicketSettingsCache } from '@/lib/utils/ticket-settings';
 import { NextRequest, NextResponse } from 'next/server';
 
 const defaultTicketSettings = {
-  ticketSystemEnabled: true,
+  ticketSystemEnabled: false,
   maxPendingTickets: '3',
   subjects: [],
 };
@@ -75,6 +75,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const isTicketSystemEnabled = ticketSettings.ticketSystemEnabled ?? false;
+
     if (!ticketSettings.subjects || !Array.isArray(ticketSettings.subjects)) {
       return NextResponse.json(
         { error: 'Subjects must be an array' },
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (ticketSettings.subjects.length === 0) {
+    if (isTicketSystemEnabled && ticketSettings.subjects.length === 0) {
       return NextResponse.json(
         { error: 'At least one subject is required' },
         { status: 400 }
@@ -101,13 +103,13 @@ export async function POST(request: NextRequest) {
     await db.ticketSettings.upsert({
       where: { id: 1 },
       update: {
-        ticketSystemEnabled: ticketSettings.ticketSystemEnabled ?? true,
+        ticketSystemEnabled: ticketSettings.ticketSystemEnabled ?? false,
         maxPendingTickets: ticketSettings.maxPendingTickets ?? '3',
         updatedAt: new Date(),
       },
       create: {
         id: 1,
-        ticketSystemEnabled: ticketSettings.ticketSystemEnabled ?? true,
+        ticketSystemEnabled: ticketSettings.ticketSystemEnabled ?? false,
         maxPendingTickets: ticketSettings.maxPendingTickets ?? '3',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -118,14 +120,16 @@ export async function POST(request: NextRequest) {
       where: { ticketSettingsId: 1 }
     });
 
-    await db.ticketSubjects.createMany({
-      data: ticketSettings.subjects.map((subject: any) => ({
-        name: subject.name.trim(),
-        ticketSettingsId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }))
-    });
+    if (ticketSettings.subjects.length > 0) {
+      await db.ticketSubjects.createMany({
+        data: ticketSettings.subjects.map((subject: any) => ({
+          name: subject.name.trim(),
+          ticketSettingsId: 1,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }))
+      });
+    }
 
     clearTicketSettingsCache();
     revalidatePath('/', 'layout');

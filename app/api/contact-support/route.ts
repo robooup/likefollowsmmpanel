@@ -1,4 +1,5 @@
 import { auth } from '@/auth';
+import { isR2Configured, uploadToR2 } from '@/lib/r2';
 import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -44,14 +45,15 @@ export async function POST(request: NextRequest) {
     const { contactDB } = await import('@/lib/contact-db');
 
     const contactSettings = await contactDB.getContactSettings();
-    if (!contactSettings?.contactSystemEnabled) {
+    const contactSystemEnabled = contactSettings?.contactSystemEnabled ?? false;
+    if (!contactSystemEnabled) {
       return NextResponse.json(
         { error: 'Contact system is currently disabled' },
         { status: 403 }
       );
     }
 
-    const maxPendingContactsStr = contactSettings.maxPendingContacts || '3';
+    const maxPendingContactsStr = (contactSettings?.maxPendingContacts || '3').toString();
 
     if (maxPendingContactsStr.toLowerCase() !== 'unlimited') {
       const { db } = await import('@/lib/db');
@@ -89,46 +91,60 @@ export async function POST(request: NextRequest) {
     let attachmentsJson = null;
     if (files && files.length > 0) {
       const uploadedFiles = [];
-      
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      try {
-        await mkdir(uploadsDir, { recursive: true });
-      } catch (error) {
+      const useR2 = isR2Configured();
+      const uploadsDir = path.join(process.cwd(), 'public', 'contact-messages');
+      if (!useR2) {
+        try {
+          await mkdir(uploadsDir, { recursive: true });
+        } catch (error) {
+        }
       }
-      
+
       for (const file of files) {
         if (file && file.name && file.size > 0) {
           if (file.size > 5 * 1024 * 1024) {
             continue;
           }
-          
+
           const allowedTypes = [
             'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf', 'text/plain', 'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
           ];
-          
+
           if (!allowedTypes.includes(file.type)) {
             continue;
           }
-          
+
           try {
             const bytes = await file.arrayBuffer();
             const buffer = Buffer.from(bytes);
-            
+
             const fileExtension = path.extname(file.name);
             const randomBytes = crypto.randomBytes(16).toString('hex');
             const timestamp = Date.now().toString();
             const hash = crypto.createHash('sha256').update(`${file.name}${timestamp}${randomBytes}`).digest('hex');
             const encryptedFilename = `${hash.substring(0, 16)}${fileExtension}`;
-            const filepath = path.join(uploadsDir, encryptedFilename);
-            
-            await writeFile(filepath, buffer);
-            
+
+            let fileUrl: string;
+            if (useR2) {
+              const r2Key = `contact-messages/${encryptedFilename}`;
+              const { url } = await uploadToR2({
+                key: r2Key,
+                body: buffer,
+                contentType: file.type || undefined,
+              });
+              fileUrl = url;
+            } else {
+              const filepath = path.join(uploadsDir, encryptedFilename);
+              await writeFile(filepath, buffer);
+              fileUrl = `/contact-messages/${encryptedFilename}`;
+            }
+
             uploadedFiles.push({
               originalName: file.name,
               encryptedName: encryptedFilename,
-              fileUrl: `/uploads/${encryptedFilename}`,
+              fileUrl,
               fileSize: file.size,
               mimeType: file.type
             });
@@ -137,7 +153,7 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-      
+
       if (uploadedFiles.length > 0) {
         attachmentsJson = JSON.stringify(uploadedFiles);
       }
@@ -237,8 +253,9 @@ export async function GET() {
     const { contactDB } = await import('@/lib/contact-db');
 
     const contactSettings = await contactDB.getContactSettings();
+    const contactSystemEnabled = contactSettings?.contactSystemEnabled ?? false;
 
-    if (!contactSettings?.contactSystemEnabled) {
+    if (!contactSystemEnabled) {
       return NextResponse.json(
         { error: 'Contact system is currently disabled' },
         { status: 403 }
@@ -247,7 +264,7 @@ export async function GET() {
 
     const categories = await contactDB.getContactCategories();
 
-    const maxPendingContactsStr = contactSettings.maxPendingContacts || '3';
+    const maxPendingContactsStr = (contactSettings?.maxPendingContacts || '3').toString();
     let userPendingCount = 0;
     let canSubmit = true;
 

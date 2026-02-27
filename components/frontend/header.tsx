@@ -3,10 +3,14 @@
 import Image from 'next/image';
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSelector } from 'react-redux';
 import { FaChevronDown, FaHome, FaMoon, FaSignOutAlt, FaSun, FaTachometerAlt, FaUserCog, FaWallet } from 'react-icons/fa';
 import { useUserSettings } from '@/hooks/use-user-settings';
+import { PriceDisplay } from '@/components/price-display';
+import { useGetUserStatsQuery } from '@/lib/services/dashboard-api';
 import { logger } from '@/lib/utils/logger';
-import { cachedFetch } from '@/lib/utils/api-cache';
+import { cachedFetch, clearCachePattern } from '@/lib/utils/api-cache';
+import { getCachedProfileImageUrl } from '@/lib/utils/profile-image-cache';
 import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
 import type { SettingsScope } from '@/lib/settings-invalidation';
 
@@ -396,19 +400,28 @@ const Header: React.FC<HeaderProps> = ({
     const [dropdownImageError, setDropdownImageError] = useState(false);
     const imageUrlRef = useRef<string | null>(null);
     const prevImageUrlRef = useRef<string | null>(null);
+    const userDetails = useSelector((state: { userDetails: { balance?: number; currency?: string } }) => state.userDetails);
+    const { data: userStatsResponse, refetch: refetchUserStats } = useGetUserStatsQuery(undefined, { skip: !user?.id });
 
     const username = useMemo(() =>
       user?.username || user?.email?.split('@')[0] || user?.name || 'User',
       [user?.username, user?.email, user?.name]
     );
-    const balance = 0;
+    const balance = userStatsResponse?.data?.balance ?? userDetails?.balance ?? user?.balance ?? 0;
+
+    useEffect(() => {
+      const handleBalanceUpdated = () => refetchUserStats();
+      window.addEventListener('balanceUpdated', handleBalanceUpdated);
+      return () => window.removeEventListener('balanceUpdated', handleBalanceUpdated);
+    }, [refetchUserStats]);
 
     const avatarImageUrl = useMemo(() => {
       const url = user?.photo || user?.image || '/general/user-placeholder.jpg';
-      if (imageUrlRef.current !== url) {
-        imageUrlRef.current = url;
+      const cached = getCachedProfileImageUrl(url);
+      if (imageUrlRef.current !== cached) {
+        imageUrlRef.current = cached;
       }
-      return imageUrlRef.current;
+      return imageUrlRef.current || cached;
     }, [user?.photo, user?.image]);
 
     useEffect(() => {
@@ -517,7 +530,13 @@ const Header: React.FC<HeaderProps> = ({
                       <FaChevronDown className="h-2.5 w-2.5 sm:h-4 sm:w-4 opacity-70" />
                     </div>
                     <div className="mt-1.5 sm:mt-2">
-                      <p className="text-lg sm:text-2xl font-bold">${balance.toFixed(2)}</p>
+                      <div className="text-lg sm:text-2xl font-bold">
+                        <PriceDisplay
+                          amount={balance}
+                          originalCurrency="USD"
+                          className="text-white"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -590,20 +609,19 @@ const Header: React.FC<HeaderProps> = ({
         if (!isMounted) return;
 
         if (data.success && data.generalSettings) {
-          const logo = data.generalSettings.siteLogo?.trim() || '/logo.png';
-          const darkLogo = data.generalSettings.siteDarkLogo?.trim();
-
+          const logo = data.generalSettings.siteLogo?.trim() ?? '';
+          const darkLogo = data.generalSettings.siteDarkLogo?.trim() ?? '';
           setSiteLogo(logo);
-          if (darkLogo) {
-            setSiteDarkLogo(darkLogo);
-          }
+          setSiteDarkLogo(darkLogo);
         } else {
-          setSiteLogo('/logo.png');
+          setSiteLogo('');
+          setSiteDarkLogo('');
         }
       } catch (error) {
         if (!isMounted) return;
         logger.error('Error fetching site logo', error);
-        setSiteLogo('/logo.png');
+        setSiteLogo('');
+        setSiteDarkLogo('');
       } finally {
         if (isMounted) {
           logoFetchedRef.current = true;
@@ -626,6 +644,7 @@ const Header: React.FC<HeaderProps> = ({
       const ce = e as CustomEvent<{ scope?: SettingsScope }>;
       const scope = ce.detail?.scope ?? 'all';
       if (scope === 'general' || scope === 'meta' || scope === 'all') {
+        clearCachePattern('general-settings');
         logoFetchedRef.current = false;
         setLogoRefreshTrigger((t) => t + 1);
       }
@@ -635,7 +654,8 @@ const Header: React.FC<HeaderProps> = ({
   }, []);
 
   const mobileAvatarUrl = useMemo(() => {
-    return memoizedSession?.user?.photo || memoizedSession?.user?.image || '/general/user-placeholder.jpg';
+    const url = memoizedSession?.user?.photo || memoizedSession?.user?.image || '/general/user-placeholder.jpg';
+    return getCachedProfileImageUrl(url);
   }, [memoizedSession?.user?.photo, memoizedSession?.user?.image]);
 
   const prevMobileAvatarUrl = useRef<string | null>(null);
@@ -646,47 +666,65 @@ const Header: React.FC<HeaderProps> = ({
     }
   }, [mobileAvatarUrl]);
 
-  const displayLogo = useMemo(() => siteLogo || '/logo.png', [siteLogo]);
-  const displayDarkLogo = useMemo(() => siteDarkLogo || displayLogo, [siteDarkLogo, displayLogo]);
+  const hasLogo = Boolean(siteLogo?.trim());
+  const hasDarkLogo = Boolean(siteDarkLogo?.trim());
+  const displayLogo = siteLogo?.trim() || null;
+  const displayDarkLogo = (siteDarkLogo?.trim() || displayLogo) || null;
 
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-[var(--header-bg)] shadow-sm dark:shadow-lg dark:shadow-black/20 transition-colors duration-200">
       <nav className="bg-white dark:bg-[var(--header-bg)]" aria-label="Main navigation">
         <div className="container mx-auto px-4 max-w-[1200px]">
           <div className="flex items-center justify-between py-3">
-            <a href="/" className="flex items-center" aria-label="Home">
-              {siteDarkLogo && siteDarkLogo !== displayLogo ? (
-                <>
+            <a href="/" className="flex items-center min-h-[3.5rem] lg:min-h-[4rem]" aria-label="Home">
+              {logoLoaded && (hasLogo || hasDarkLogo) ? (
+                hasDarkLogo && displayDarkLogo !== displayLogo ? (
+                  <>
+                    {displayLogo && (
+                      <Image
+                        src={displayLogo}
+                        alt="Like Follow SMM Panel"
+                        width={400}
+                        height={50}
+                        className="h-14 lg:h-16 w-auto max-w-[400px] dark:hidden"
+                        priority
+                        unoptimized={displayLogo.startsWith('http')}
+                      />
+                    )}
+                    {displayDarkLogo && (
+                      <Image
+                        src={displayDarkLogo}
+                        alt="Like Follow SMM Panel"
+                        width={400}
+                        height={50}
+                        className="h-14 lg:h-16 w-auto max-w-[400px] hidden dark:block"
+                        priority
+                        unoptimized={displayDarkLogo.startsWith('http')}
+                      />
+                    )}
+                  </>
+                ) : displayLogo ? (
                   <Image
                     src={displayLogo}
                     alt="Like Follow SMM Panel"
                     width={400}
                     height={50}
-                    className="h-14 lg:h-16 w-auto max-w-[400px] dark:hidden"
+                    className="h-14 lg:h-16 w-auto max-w-[400px]"
                     priority
                     unoptimized={displayLogo.startsWith('http')}
                   />
+                ) : displayDarkLogo ? (
                   <Image
                     src={displayDarkLogo}
                     alt="Like Follow SMM Panel"
                     width={400}
                     height={50}
-                    className="h-14 lg:h-16 w-auto max-w-[400px] hidden dark:block"
+                    className="h-14 lg:h-16 w-auto max-w-[400px]"
                     priority
                     unoptimized={displayDarkLogo.startsWith('http')}
                   />
-                </>
-              ) : (
-                <Image
-                  src={displayLogo}
-                  alt="Like Follow SMM Panel"
-                  width={400}
-                  height={50}
-                  className="h-14 lg:h-16 w-auto max-w-[400px]"
-                  priority
-                  unoptimized={displayLogo.startsWith('http')}
-                />
-              )}
+                ) : null
+              ) : null}
             </a>
 
             <div className="hidden lg:flex items-center space-x-1">
@@ -741,36 +779,51 @@ const Header: React.FC<HeaderProps> = ({
         <div className="absolute inset-0 z-0 bg-black/20 dark:bg-black/40" onClick={closeMenu} aria-hidden="true"></div>
         <div className={`relative z-10 w-[80%] h-full bg-white dark:bg-[var(--header-bg)] shadow-lg transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <a href="/" className="flex items-center">
-                {siteDarkLogo && siteDarkLogo !== displayLogo ? (
-                  <>
+              <a href="/" className="flex items-center min-h-[3rem]">
+                {logoLoaded && (hasLogo || hasDarkLogo) ? (
+                  hasDarkLogo && displayDarkLogo !== displayLogo ? (
+                    <>
+                      {displayLogo && (
+                        <Image
+                          src={displayLogo}
+                          alt="Like Follow SMM Panel"
+                          width={200}
+                          height={25}
+                          className="h-12 w-auto dark:hidden"
+                          unoptimized={displayLogo.startsWith('http')}
+                        />
+                      )}
+                      {displayDarkLogo && (
+                        <Image
+                          src={displayDarkLogo}
+                          alt="Like Follow SMM Panel"
+                          width={200}
+                          height={25}
+                          className="h-12 w-auto hidden dark:block"
+                          unoptimized={displayDarkLogo.startsWith('http')}
+                        />
+                      )}
+                    </>
+                  ) : displayLogo ? (
                     <Image
                       src={displayLogo}
                       alt="Like Follow SMM Panel"
                       width={200}
                       height={25}
-                      className="h-12 w-auto dark:hidden"
+                      className="h-12 w-auto"
                       unoptimized={displayLogo.startsWith('http')}
                     />
+                  ) : displayDarkLogo ? (
                     <Image
                       src={displayDarkLogo}
                       alt="Like Follow SMM Panel"
                       width={200}
                       height={25}
-                      className="h-12 w-auto hidden dark:block"
+                      className="h-12 w-auto"
                       unoptimized={displayDarkLogo.startsWith('http')}
                     />
-                  </>
-                ) : (
-                  <Image
-                    src={displayLogo}
-                    alt="Like Follow SMM Panel"
-                    width={200}
-                    height={25}
-                    className="h-12 w-auto"
-                    unoptimized={displayLogo.startsWith('http')}
-                  />
-                )}
+                  ) : null
+                ) : null}
               </a>
               <button
                 className="p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-[var(--primary)] dark:hover:text-[var(--secondary)] hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"

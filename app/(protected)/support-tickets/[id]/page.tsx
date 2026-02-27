@@ -345,7 +345,7 @@ const UserSupportTicketPage = ({ params }: { params: Promise<{ id: string }> }) 
         for (const file of selectedFiles) {
           const fileFormData = new FormData();
           fileFormData.append('file', file);
-          fileFormData.append('uploadType', 'uploads');
+          fileFormData.append('uploadType', 'support_ticket_uploads');
 
           const uploadResponse = await fetch('/api/upload', {
             method: 'POST',

@@ -24,6 +24,9 @@ function SideBarContent({
   session: Session | null | undefined;
 }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [siteIcon, setSiteIcon] = useState<string>('');
+  const [sidebarLogo, setSidebarLogo] = useState<string>('');
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -35,6 +38,32 @@ function SideBarContent({
       setIsLoading(true);
     }
   }, [session]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/public/general-settings', { cache: 'no-store' });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.generalSettings) {
+            if (data.generalSettings.siteIcon) {
+              const icon = String(data.generalSettings.siteIcon).trim();
+              setSiteIcon(icon);
+            }
+            if (data.generalSettings.siteDarkLogo) {
+              const darkLogo = String(data.generalSettings.siteDarkLogo).trim();
+              setSidebarLogo(darkLogo);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch general settings for sidebar icon:', error);
+      } finally {
+        setSettingsLoaded(true);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const showSkeleton = isLoading || !session?.user;
 
@@ -53,18 +82,18 @@ function SideBarContent({
           <>
             {showSkeleton ? (
               <div className="w-[50px] h-[50px] rounded bg-slate-700/50 animate-pulse"></div>
-            ) : (
+            ) : settingsLoaded && siteIcon ? (
               <Link href="/">
                 <Image
-                  src="/favicon.png"
-                  alt="Favicon"
+                  src={siteIcon}
+                  alt="Site Icon"
                   width={50}
                   height={50}
                   className="object-contain cursor-pointer hover:opacity-80 transition-opacity duration-200"
                   priority={true}
                 />
               </Link>
-            )}
+            ) : null}
             <button
               className="p-2 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] shadow-lg w-10 h-10 flex items-center justify-center text-white rounded-md transition-all duration-300"
               onClick={() => setCollapsed(!collapsed)}
@@ -82,7 +111,7 @@ function SideBarContent({
                 ) : session?.user?.role === 'admin' ? (
                   <Link href="/">
                     <Image
-                      src="/sit_logo-landscape-dark.png"
+                      src="/general/sit-logo-dark.png"
                       alt="Suitable IT Logo"
                       width={280}
                       height={60}
@@ -90,18 +119,18 @@ function SideBarContent({
                       priority={true}
                     />
                   </Link>
-                ) : (
+                ) : settingsLoaded && sidebarLogo ? (
                   <Link href="/">
                     <Image
-                      src="/logo.png"
-                      alt="User Logo"
+                      src={sidebarLogo}
+                      alt="Site Dark Logo"
                       width={280}
                       height={60}
-                      className="object-cover w-full h-[40px] cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                      className="object-contain w-full h-[40px] cursor-pointer hover:opacity-80 transition-opacity duration-200"
                       priority={true}
                     />
                   </Link>
-                )}
+                ) : null}
               </div>
             </div>
             <button

@@ -16,13 +16,15 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
   const [supportEmail, setSupportEmail] = useState<string>('');
   const [whatsappNumber, setWhatsappNumber] = useState<string>('');
-  const [siteLogo, setSiteLogo] = useState<string>('/logo.png');
+  const [siteLogo, setSiteLogo] = useState<string>('');
   const [siteDarkLogo, setSiteDarkLogo] = useState<string>('');
-  const [siteIcon, setSiteIcon] = useState<string>('/favicon.png');
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [siteIcon, setSiteIcon] = useState<string>('');
 
-  const fetchSettings = useCallback(async () => {
+  const fetchSettings = useCallback(async (bustCache = false) => {
     try {
-      const response = await fetch('/api/public/general-settings', { cache: 'no-store' });
+      const url = bustCache ? `/api/public/general-settings?t=${Date.now()}` : '/api/public/general-settings';
+      const response = await fetch(url, { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.generalSettings) {
@@ -32,19 +34,17 @@ const Footer = () => {
           if (data.generalSettings.whatsappNumber) {
             setWhatsappNumber(data.generalSettings.whatsappNumber);
           }
-          if (data.generalSettings.siteLogo && data.generalSettings.siteLogo.trim() !== '') {
-            setSiteLogo(data.generalSettings.siteLogo);
-          }
-          if (data.generalSettings.siteDarkLogo && data.generalSettings.siteDarkLogo.trim() !== '') {
-            setSiteDarkLogo(data.generalSettings.siteDarkLogo);
-          }
+          setSiteLogo((data.generalSettings.siteLogo ?? '').trim());
+          setSiteDarkLogo((data.generalSettings.siteDarkLogo ?? '').trim());
           if (data.generalSettings.siteIcon && data.generalSettings.siteIcon.trim() !== '') {
             setSiteIcon(data.generalSettings.siteIcon);
           }
         }
+        setSettingsLoaded(true);
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
+      setSettingsLoaded(true);
     }
   }, []);
 
@@ -57,7 +57,7 @@ const Footer = () => {
       const ce = e as CustomEvent<{ scope?: SettingsScope }>;
       const scope = ce.detail?.scope ?? 'all';
       if (scope === 'general' || scope === 'meta' || scope === 'all') {
-        fetchSettings();
+        fetchSettings(true);
       }
     };
     window.addEventListener(SETTINGS_INVALIDATED_EVENT, handleSettingsInvalidated);
@@ -155,32 +155,26 @@ const Footer = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 pr-8">
             <div className="footer_txt">
-              <Link href="/">
-                {siteDarkLogo && siteDarkLogo.trim() !== '' ? (
-                  <Image
-                    src={siteDarkLogo}
-                    alt="Site Dark Logo"
-                    width={200}
-                    height={60}
-                    className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
-                  />
-                ) : siteLogo && siteLogo.trim() !== '' ? (
-                  <Image
-                    src={siteLogo}
-                    alt="Site Logo"
-                    width={200}
-                    height={60}
-                    className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
-                  />
-                ) : (
-                  <Image
-                    src="/logo.png"
-                    alt="Like Follow SMM Panel White Logo"
-                    width={200}
-                    height={60}
-                    className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
-                  />
-                )}
+              <Link href="/" className="inline-block">
+                {settingsLoaded && (siteDarkLogo.trim() !== '' || siteLogo.trim() !== '') ? (
+                  siteDarkLogo.trim() !== '' ? (
+                    <Image
+                      src={siteDarkLogo}
+                      alt="Site Dark Logo"
+                      width={200}
+                      height={60}
+                      className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
+                    />
+                  ) : (
+                    <Image
+                      src={siteLogo}
+                      alt="Site Logo"
+                      width={200}
+                      height={60}
+                      className="footer_logo mb-4 max-w-[200px] h-auto hover:opacity-80 transition-opacity cursor-pointer"
+                    />
+                  )
+                ) : null}
               </Link>
               <p className="text-white text-sm leading-relaxed mb-4">
                 Boost your online presence today with our Cheap SMM Panel – the

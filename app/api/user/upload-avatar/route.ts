@@ -1,9 +1,8 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
+import { isR2Configured, ensureR2Path, uploadToR2 } from '@/lib/r2';
 import { NextRequest, NextResponse } from 'next/server';
 import { ActivityLogger } from '@/lib/activity-logger';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 
 export async function POST(req: NextRequest) {
   try {
@@ -58,22 +57,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
+    if (!isR2Configured()) {
+      return NextResponse.json(
+        {
+          error: 'Profile picture upload is only available when R2 storage is configured.',
+          success: false,
+          data: null
+        },
+        { status: 503 }
+      );
     }
 
+    const avatarPath = 'avatars';
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
     const filename = `avatar_${session.user.id}_${timestamp}.${extension}`;
-    const filepath = path.join(uploadDir, filename);
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
 
-    const imagePath = `/uploads/avatars/${filename}`;
+    await ensureR2Path(avatarPath);
+    const r2Key = `${avatarPath}/${filename}`;
+    const { url: imagePath } = await uploadToR2({
+      key: r2Key,
+      body: buffer,
+      contentType: file.type || undefined,
+    });
     const updatedUser = await db.users.update({
       where: { id: parseInt(session.user.id) },
       data: { 

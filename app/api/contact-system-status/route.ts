@@ -4,7 +4,7 @@ import { contactDB } from '@/lib/contact-db';
 export async function GET() {
   try {
     const contactSettings = await contactDB.getContactSettings();
-    const contactSystemEnabled = contactSettings?.contactSystemEnabled ?? true;
+    const contactSystemEnabled = contactSettings?.contactSystemEnabled ?? false;
     
     return NextResponse.json({
       success: true,
@@ -14,7 +14,7 @@ export async function GET() {
     console.error('Error checking contact system status:', error);
     return NextResponse.json({
       success: true,
-      contactSystemEnabled: true
+      contactSystemEnabled: false
     });
   }
 }

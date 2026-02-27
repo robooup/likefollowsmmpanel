@@ -63,20 +63,7 @@ export async function GET(request: NextRequest) {
       theme_color: '#000000',
       orientation: 'portrait-primary',
       categories: ['business', 'productivity', 'social'],
-      icons: [
-        {
-          src: '/favicon.png',
-          sizes: '192x192',
-          type: 'image/png',
-          purpose: 'any maskable'
-        },
-        {
-          src: '/favicon.png',
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'any maskable'
-        }
-      ]
+      icons: []
     };
 
     return NextResponse.json(fallbackManifest, {

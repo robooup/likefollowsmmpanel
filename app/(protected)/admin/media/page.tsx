@@ -182,7 +182,7 @@ const MediaPage = () => {
   };
 
   const copyUrl = (url: string) => {
-    const fullUrl = `${window.location.origin}${url}`;
+    const fullUrl = url.startsWith('http://') || url.startsWith('https://') ? url : `${window.location.origin}${url}`;
     navigator.clipboard.writeText(fullUrl).then(() => {
       showToast('URL copied to clipboard', 'success');
     });
@@ -456,6 +456,7 @@ const MediaPage = () => {
         isOpen={showMediaAttachModal}
         onClose={() => setShowMediaAttachModal(false)}
         currentPath={currentPath}
+        uploadType="admin_media"
         showTabs={false}
         onUploadSuccess={() => {
           fetchMedia(currentPath);

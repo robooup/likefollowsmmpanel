@@ -360,7 +360,7 @@ const Hero: React.FC = () => {
                 data-aos-duration="1200"
               >
                 <Image
-                  src="/smmgen-users.webp"
+                  src="/smmdoc-users.webp"
                   alt="Like Follow SMM Panel Users"
                   width={60}
                   height={40}

@@ -339,21 +339,32 @@ axios.post(url, payload)
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="relative flex-1">
                     <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey || ''}
+                      type="text"
                       readOnly
-                      className="form-field w-full pr-10 font-monow-full px-4 py-3 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
+                      value={
+                        apiKey && showApiKey
+                          ? apiKey
+                          : apiKey
+                            ? '••••••••••••••••••••••••••••••••'
+                            : ''
+                      }
+                      placeholder={!apiKey ? 'No API key generated' : undefined}
+                      className={`form-field w-full font-mono px-4 py-3 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 ${apiKey ? 'pr-10' : ''}`}
                     />
-                    <button
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                    >
-                      {showApiKey ? (
-                        <FaEyeSlash className="h-4 w-4" />
-                      ) : (
-                        <FaEye className="h-4 w-4" />
-                      )}
-                    </button>
+                    {apiKey && (
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
+                        title={showApiKey ? 'Hide API Key' : 'Show API Key'}
+                      >
+                        {showApiKey ? (
+                          <FaEyeSlash className="h-4 w-4" />
+                        ) : (
+                          <FaEye className="h-4 w-4" />
+                        )}
+                      </button>
+                    )}
                   </div>
                   <button
                     onClick={() =>

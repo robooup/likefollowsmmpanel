@@ -12,6 +12,7 @@ const initialState = {
   total_deposit: 0,
   total_spent: 0,
   image: '',
+  updatedAt: null as number | null,
   timeFormat: '12',
   timezone: '',
   language: '',
@@ -33,6 +34,12 @@ const userDetailsSlice = createSlice({
       state.total_deposit = action.payload.total_deposit || 0;
       state.total_spent = action.payload.total_spent || 0;
       state.image = action.payload.image || '';
+      state.updatedAt =
+        action.payload.updatedAt != null
+          ? typeof action.payload.updatedAt === 'object' && 'getTime' in action.payload.updatedAt
+            ? (action.payload.updatedAt as Date).getTime()
+            : Number(action.payload.updatedAt)
+          : null;
       state.timeFormat = action.payload.timeFormat || '12';
       state.timezone = action.payload.timezone || '';
       state.language = action.payload.language || '';

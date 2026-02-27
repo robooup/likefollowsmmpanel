@@ -17,6 +17,7 @@ import { useGetUserStatsQuery } from '@/lib/services/dashboard-api';
 import { setUserDetails } from '@/lib/slice/userDetails';
 import { useCurrency } from '@/contexts/currency-context';
 import { PriceDisplay } from '@/components/price-display';
+import { getCachedProfileImageUrl } from '@/lib/utils/profile-image-cache';
 import { useTheme } from 'next-themes';
 import {
   DropdownMenu,
@@ -272,7 +273,6 @@ const ProfileCard = ({
   const { data: userStatsResponse, isLoading: isLoadingStats, refetch: refetchUserStats } = useGetUserStatsQuery(undefined);
   const balance = userStatsResponse?.data?.balance || userData?.balance || 0;
   const userStoredCurrency = userStatsResponse?.data?.currency || userData?.currency || 'USD';
-  const [isInitialLoading, setIsInitialLoading] = useState(false);
 
   useEffect(() => {
     const handleAvatarUpdate = async () => {
@@ -299,18 +299,9 @@ const ProfileCard = ({
       window.removeEventListener('balanceUpdated', handleBalanceUpdated);
     };
   }, [dispatch, refetchUserStats]);
-  
-  useEffect(() => {
-    if (isOpen) {
-      setIsInitialLoading(true);
-      const timer = setTimeout(() => {
-        setIsInitialLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
 
   const imageUrl = user?.photo || user?.image || userData?.image || '/general/user-placeholder.jpg';
+  const cachedImageUrl = getCachedProfileImageUrl(imageUrl);
 
   useEffect(() => {
     if (imageUrl) {
@@ -321,8 +312,6 @@ const ProfileCard = ({
       setDropdownImageError(false);
     }
   }, [user?.photo, user?.image, userData?.image]);
-
-  const isLoading = isInitialLoading || isLoadingStats || !user;
 
   const menuItems = [
     {
@@ -386,8 +375,8 @@ const ProfileCard = ({
         <Avatar className="h-10 w-10 sm:h-10 sm:w-10">
           {!imageError ? (
             <img
-              key={`avatar-${imageUrl}-${Date.now()}`}
-              src={`${imageUrl}${imageUrl?.includes('?') ? '&' : '?'}_t=${Date.now()}`}
+              key={`avatar-${imageUrl}`}
+              src={cachedImageUrl}
               alt={user?.name || userData?.name || 'User'}
               className="w-full h-full object-cover relative z-10"
               onError={() => {
@@ -420,36 +409,15 @@ const ProfileCard = ({
               right: '0',
             }}
           >
-            {isLoading ? (
-              <div
-                className="p-3 sm:p-6 bg-gray-100 dark:bg-gray-800"
-              >
-                <div className="flex items-center space-x-2 sm:space-x-4 mb-3 sm:mb-4">
-                  <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-full gradient-shimmer flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <div className="h-4 sm:h-6 w-3/4 gradient-shimmer rounded mb-2"></div>
-                    <div className="h-3 sm:h-4 w-2/3 gradient-shimmer rounded mb-2"></div>
-                    <div className="h-5 w-16 gradient-shimmer rounded"></div>
-                  </div>
-                </div>
-                <div className="rounded-lg p-2.5 sm:p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="h-4 w-32 gradient-shimmer rounded"></div>
-                    <div className="h-4 w-4 gradient-shimmer rounded"></div>
-                  </div>
-                  <div className="h-6 sm:h-8 w-24 gradient-shimmer rounded"></div>
-                </div>
-              </div>
-            ) : (
-              <div
-                className="p-3 sm:p-6 bg-gray-100 dark:bg-gray-800"
-              >
+            <div
+              className="p-3 sm:p-6 bg-gray-100 dark:bg-gray-800"
+            >
                 <div className="flex items-center space-x-2 sm:space-x-4 mb-3 sm:mb-4">
                   <Avatar className="h-10 w-10 sm:h-14 sm:w-14 ring-2 sm:ring-3 ring-[var(--primary)]/20">
                     {!dropdownImageError ? (
                       <img
-                        key={`dropdown-avatar-${imageUrl}-${Date.now()}`}
-                        src={`${imageUrl}${imageUrl?.includes('?') ? '&' : '?'}_t=${Date.now()}`}
+                        key={`dropdown-avatar-${imageUrl}`}
+                        src={cachedImageUrl}
                         alt={user?.name || userData?.name || 'User'}
                         className="w-full h-full object-cover relative z-10"
                         onError={() => {
@@ -518,8 +486,7 @@ const ProfileCard = ({
                     </div>
                   </div>
                 )}
-              </div>
-            )}
+            </div>
 
             <div className="sm:hidden p-2 space-y-2">
               <MobileCurrencyToggle onClose={() => handleDropdownChange?.('profile', false)} />

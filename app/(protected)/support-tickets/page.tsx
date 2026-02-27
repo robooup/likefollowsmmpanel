@@ -99,7 +99,7 @@ const TicketPage: React.FC = () => {
   const [openAccordion, setOpenAccordion] = useState<string | null>(null);
   const [orderIdsError, setOrderIdsError] = useState<string>('');
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<{name: string, url: string}[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
   const { recaptchaSettings, isEnabledForForm } = useReCAPTCHA();
@@ -281,84 +281,90 @@ const TicketPage: React.FC = () => {
     handleInputChange('orderIds', sanitized);
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
 
-    setUploadingFiles(true);
-    const newUploadedFiles: {name: string, url: string}[] = [];
+    const validFiles: File[] = [];
 
-    try {
-      for (const file of Array.from(files)) {
-
-        const maxSize = 3 * 1024 * 1024;
-        if (file.size > maxSize) {
-          showToast(`File "${file.name}" is too large. Maximum 3MB allowed.`, 'error');
-          continue;
-        }
-
-        const allowedTypes = [
-          'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-          'application/pdf'
-        ];
-        if (!allowedTypes.includes(file.type)) {
-          showToast(`File "${file.name}" has an unsupported format. Only images and PDFs are allowed.`, 'error');
-          continue;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'uploads');
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          newUploadedFiles.push({
-            name: file.name,
-            url: result.fileUrl
-          });
-        } else {
-          const error = await response.json();
-          showToast(`Failed to upload "${file.name}": ${error.error}`, 'error');
-        }
+    for (const file of files) {
+      const maxSize = 3 * 1024 * 1024;
+      if (file.size > maxSize) {
+        showToast(`File "${file.name}" is too large. Maximum 3MB allowed.`, 'error');
+        continue;
       }
 
-      if (newUploadedFiles.length > 0) {
-        setUploadedFiles(prev => [...prev, ...newUploadedFiles]);
-        const newAttachments = newUploadedFiles.map(file => file.url);
-        setFormData(prev => ({
-          ...prev,
-          attachments: [...prev.attachments, ...newAttachments]
-        }));
-        showToast(`${newUploadedFiles.length} file(s) uploaded successfully!`, 'success');
+      const allowedTypes = [
+        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf'
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        showToast(`File "${file.name}" has an unsupported format. Only images and PDFs are allowed.`, 'error');
+        continue;
       }
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      showToast('Error uploading files. Please try again.', 'error');
-    } finally {
-      setUploadingFiles(false);
 
-      event.target.value = '';
+      validFiles.push(file);
     }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles(prev => [...prev, ...validFiles]);
+      showToast(`${validFiles.length} file(s) selected successfully!`, 'success');
+    }
+
+    event.target.value = '';
   };
 
-  const removeUploadedFile = (index: number) => {
-    const fileToRemove = uploadedFiles[index];
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter(url => url !== fileToRemove.url)
-    }));
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
     try {
+      let attachmentUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        setUploadingFiles(true);
+        try {
+          for (const file of selectedFiles) {
+            const maxSize = 3 * 1024 * 1024;
+            if (file.size > maxSize) {
+              showToast(`File "${file.name}" is too large. Maximum 3MB allowed.`, 'error');
+              continue;
+            }
+
+            const allowedTypes = [
+              'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+              'application/pdf'
+            ];
+            if (!allowedTypes.includes(file.type)) {
+              showToast(`File "${file.name}" has an unsupported format. Only images and PDFs are allowed.`, 'error');
+              continue;
+            }
+
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+            formDataUpload.append('type', 'support_ticket_uploads');
+
+            const responseUpload = await fetch('/api/upload', {
+              method: 'POST',
+              body: formDataUpload,
+            });
+
+            if (responseUpload.ok) {
+              const result = await responseUpload.json();
+              if (result.fileUrl) {
+                attachmentUrls.push(result.fileUrl);
+              }
+            } else {
+              const error = await responseUpload.json().catch(() => ({ error: 'Failed to upload file' }));
+              showToast(`Failed to upload "${file.name}": ${error.error}`, 'error');
+            }
+          }
+        } finally {
+          setUploadingFiles(false);
+        }
+      }
 
       if (isEnabledForForm('supportTicket') && !recaptchaToken) {
         showToast('Please complete the ReCAPTCHA verification', 'error');
@@ -414,7 +420,7 @@ const TicketPage: React.FC = () => {
         humanTicketSubject: formData.humanTicketSubject,
         orderIds,
         priority: formData.priority,
-        attachments: formData.attachments,
+        attachments: attachmentUrls,
         ...(recaptchaToken && { recaptchaToken }),
       };
 
@@ -446,8 +452,7 @@ const TicketPage: React.FC = () => {
             priority: 'medium',
             attachments: [],
           });
-
-          setUploadedFiles([]);
+          setSelectedFiles([]);
 
           fetchTickets();
         }
@@ -693,17 +698,17 @@ const TicketPage: React.FC = () => {
                             type="file"
                             multiple
                             onChange={handleFileUpload}
-                            disabled={uploadingFiles}
+                            disabled={uploadingFiles || isSubmitting}
                             className="hidden"
                             accept="image/*"
                           />
                         </div>
-                        {uploadedFiles.length > 0 && (
+                        {selectedFiles.length > 0 && (
                           <div className="space-y-2">
                             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                               Uploaded Files:
                             </p>
-                            {uploadedFiles.map((file, index) => (
+                            {selectedFiles.map((file, index) => (
                               <div
                                 key={index}
                                 className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
@@ -716,7 +721,7 @@ const TicketPage: React.FC = () => {
                                 </div>
                                 <button
                                   type="button"
-                                  onClick={() => removeUploadedFile(index)}
+                                  onClick={() => removeSelectedFile(index)}
                                   className="text-red-500 hover:text-red-700 transition-colors"
                                 >
                                   <FaTimes className="w-3 h-3" />

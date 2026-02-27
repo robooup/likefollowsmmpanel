@@ -406,7 +406,7 @@ const Header = () => {
 
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [contactSystemEnabled, setContactSystemEnabled] = useState(true);
+  const [contactSystemEnabled, setContactSystemEnabled] = useState(false);
   const [childPanelSellingEnabled, setChildPanelSellingEnabled] = useState(true);
 
   const [openDropdowns, setOpenDropdowns] = useState({
@@ -435,7 +435,7 @@ const Header = () => {
         const response = await fetch('/api/contact-system-status');
         if (response.ok) {
           const data = await response.json();
-          setContactSystemEnabled(data.contactSystemEnabled ?? true);
+          setContactSystemEnabled(data.contactSystemEnabled ?? false);
         }
       } catch (error) {
         logger.error('Error fetching contact settings', error);
@@ -607,7 +607,7 @@ const Header = () => {
         `
       }} />
       <Link href="/" className="flex lg:hidden items-center">
-        <img src="/logo.png" alt="Logo" className="h-12 w-auto" />
+        <img src="/general/logo.png" alt="Logo" className="h-12 w-auto" />
       </Link>
       <div className="hidden lg:flex items-center gap-3 flex-grow max-w-md">
         <div className="relative w-full h-10 flex items-center">

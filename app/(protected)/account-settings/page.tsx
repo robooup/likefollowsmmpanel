@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { DEFAULT_USER_PLACEHOLDER } from '@/lib/constants';
+import { getCachedProfileImageUrl } from '@/lib/utils/profile-image-cache';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { getUserDetails } from '@/lib/actions/getUser';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
@@ -16,6 +17,7 @@ const MediaAttachModal = dynamic(
 import {
     FaCamera,
     FaCheck,
+    FaCheckCircle,
     FaClock,
     FaCopy,
     FaEye,
@@ -28,7 +30,7 @@ import {
 } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 
-const Toast = ({
+const UserToast = ({
   message,
   type = 'success',
   onClose,
@@ -58,6 +60,24 @@ const Toast = ({
         <FaTimes className="w-3 h-3" />
       </button>
     </div>
+  </div>
+);
+
+const AdminToast = ({
+  message,
+  type = 'success',
+  onClose,
+}: {
+  message: string;
+  type?: 'success' | 'error' | 'info' | 'pending';
+  onClose: () => void;
+}) => (
+  <div className={`toast toast-${type} toast-enter`}>
+    {type === 'success' && <FaCheckCircle className="toast-icon" />}
+    <span className="font-medium">{message}</span>
+    <button onClick={onClose} className="toast-close">
+      <FaTimes className="toast-close-icon" />
+    </button>
   </div>
 );
 
@@ -735,14 +755,32 @@ const ProfilePage = () => {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        const updatedUserDetails = { ...userDetails, image: result.data.image };
+        const newImageUrl = result.data.image;
+        const urlsToPurge = [newImageUrl].filter(Boolean);
+        if (user?.image?.trim() && user.image !== newImageUrl) {
+          urlsToPurge.push(user.image);
+        }
+        try {
+          await fetch('/api/user/purge-profile-image-cache', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ urls: urlsToPurge }),
+          });
+        } catch {
+        }
+
+        const updatedUserDetails = {
+          ...userDetails,
+          image: newImageUrl,
+          ...(result.data.updatedAt != null && { updatedAt: result.data.updatedAt }),
+        };
         dispatch(setUserDetails(updatedUserDetails));
 
         try {
           await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: result.data.image }),
+            body: JSON.stringify({ image: newImageUrl }),
           });
         } catch {
         }
@@ -982,13 +1020,20 @@ const ProfilePage = () => {
   return (
     <div className="page-container">
       <div className="toast-container">
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
+        {toast &&
+          (currentUser?.role === 'admin' ? (
+            <AdminToast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          ) : (
+            <UserToast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+            />
+          ))}
       </div>
 
       <div className="page-content">
@@ -1167,7 +1212,7 @@ const ProfilePage = () => {
                 <div className="relative">
                   {((user?.image || DEFAULT_USER_PLACEHOLDER) && !profileImageError) ? (
                     <img
-                      src={user?.image || DEFAULT_USER_PLACEHOLDER}
+                      src={getCachedProfileImageUrl(user?.image || DEFAULT_USER_PLACEHOLDER)}
                       alt="Profile"
                       className="profile-picture object-cover"
                       onError={() => {
@@ -1193,7 +1238,7 @@ const ProfilePage = () => {
               <MediaAttachModal
                 isOpen={showMediaAttachModal}
                 onClose={() => setShowMediaAttachModal(false)}
-                currentPath="uploads/avatars"
+                currentPath="avatars"
                 singleFile
                 showTabs={false}
                 accept="image/*"
@@ -1331,7 +1376,7 @@ const ProfilePage = () => {
                 </div>
               </div>
             </div>
-            <div className="card card-padding">
+            <div className="card card-padding hidden">
               <div className="card-header">
                 <div className="card-icon">
                   <FaKey />
@@ -1352,8 +1397,9 @@ const ProfilePage = () => {
                             ? (apiKey.key || '')
                             : apiKey
                             ? '••••••••••••••••••••••••••••••••'
-                            : 'No API key generated'
+                            : ''
                         }
+                        placeholder={!apiKey ? 'No API key generated' : undefined}
                         className="form-field w-full pr-20 font-mono px-4 py-3 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
                       />
 
@@ -1457,7 +1503,7 @@ const ProfilePage = () => {
                 </button>
               </div>
             </div>
-            <div className="card card-padding">
+            <div className="card card-padding hidden">
               <div className="card-header">
                 <div className="card-icon">
                   <FaGlobe />

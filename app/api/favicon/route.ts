@@ -1,5 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { getGeneralSettings } from '@/lib/utils/general-settings';
+import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
@@ -11,21 +10,26 @@ export async function GET(request: NextRequest) {
         siteIcon: true,
       },
     });
-    
-    const siteIcon = settings?.siteIcon || '';
-    
-    if (siteIcon && siteIcon.trim() !== '') {
-      const iconPathRelative = siteIcon.startsWith('/') 
-        ? siteIcon.substring(1) 
+
+    const siteIcon = (settings?.siteIcon ?? '').trim();
+
+    if (siteIcon !== '') {
+      if (siteIcon.startsWith('http://') || siteIcon.startsWith('https://')) {
+        const res = NextResponse.redirect(siteIcon, 302);
+        res.headers.set('Cache-Control', 'no-store, max-age=0');
+        return res;
+      }
+
+      const iconPathRelative = siteIcon.startsWith('/')
+        ? siteIcon.substring(1)
         : siteIcon;
-      
       const iconPath = path.join(process.cwd(), 'public', iconPathRelative);
-      
+
       try {
         if (fs.existsSync(iconPath)) {
           const fileBuffer = fs.readFileSync(iconPath);
           const fileExtension = path.extname(siteIcon).toLowerCase();
-          
+
           let contentType = 'image/x-icon';
           switch (fileExtension) {
             case '.png':
@@ -47,42 +51,21 @@ export async function GET(request: NextRequest) {
             default:
               contentType = 'image/png';
           }
-          
+
           return new NextResponse(fileBuffer, {
             headers: {
               'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=300, s-maxage=300, must-revalidate',
+              'Cache-Control': 'no-store, max-age=0',
             },
           });
-        } else {
-          console.warn(`[Favicon] File not found at: ${iconPath}. SiteIcon value: ${siteIcon}`);
-          const dirPath = path.dirname(iconPath);
-          if (fs.existsSync(dirPath)) {
-            try {
-              const files = fs.readdirSync(dirPath);
-              console.log(`[Favicon] Files in directory ${dirPath}:`, files);
-            } catch (e) {
-            }
-          }
         }
       } catch (fileError) {
         console.error(`Error reading favicon file at ${iconPath}:`, fileError);
       }
+      return new NextResponse(null, { status: 404 });
     }
-    
-    const defaultFaviconPath = path.join(process.cwd(), 'public', 'favicon.png');
-    if (fs.existsSync(defaultFaviconPath)) {
-      const fileBuffer = fs.readFileSync(defaultFaviconPath);
-      return new NextResponse(fileBuffer, {
-        headers: {
-          'Content-Type': 'image/png',
-          'Cache-Control': 'public, max-age=300, s-maxage=300, must-revalidate',
-        },
-      });
-    }
-    
-    return new NextResponse('Favicon not found', { status: 404 });
-    
+
+    return new NextResponse(null, { status: 404 });
   } catch (error) {
     console.error('Error serving favicon:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

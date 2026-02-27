@@ -461,6 +461,7 @@ const EditBlogPostPage = () => {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
       formDataUpload.append('type', 'uploads');
+      formDataUpload.append('uploadPath', 'blog-img');
 
       const response = await fetch('/api/upload', {
         method: 'POST',
