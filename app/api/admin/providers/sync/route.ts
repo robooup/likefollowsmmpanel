@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { convertToUSD } from '@/lib/currency-utils';
+import { convertToUSD, USD_DEFAULT } from '@/lib/currency-utils';
 import { db } from '@/lib/db';
 import { trimSyncLogsToMax } from '@/lib/sync-logs-cleanup';
 import { NextRequest, NextResponse } from 'next/server';
@@ -66,14 +66,13 @@ export async function POST(req: NextRequest) {
     const syncResults = [];
     const errors = [];
 
-    const currenciesData = await db.currencies.findMany({
+    const fromDb = await db.currencies.findMany({
       where: { enabled: true }
     });
-
-    const currencies = currenciesData.map(c => ({
-      ...c,
-      rate: Number(c.rate)
-    }));
+    const currencies = [
+      USD_DEFAULT,
+      ...fromDb.filter(c => c.code !== 'USD').map(c => ({ ...c, rate: Number(c.rate) }))
+    ];
 
     for (const provider of providersToSync) {
       try {

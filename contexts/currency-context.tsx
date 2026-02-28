@@ -7,7 +7,8 @@ import {
     Currency,
     CurrencySettings,
     fetchCurrencyData,
-    formatCurrencyAmount
+    formatCurrencyAmount,
+    USD_DEFAULT
 } from '@/lib/currency-utils';
 import { createContext, useContext, useEffect, useMemo, useCallback, useRef, useState } from 'react';
 
@@ -73,9 +74,7 @@ export function CurrencyProvider({
     } catch (error) {
       console.error('Error loading currency data:', error);
 
-      const fallbackCurrencies: Currency[] = [
-        { id: 1, code: 'USD', name: 'US Dollar', symbol: '$', rate: 1.0000, enabled: true },
-      ];
+      const fallbackCurrencies: Currency[] = [USD_DEFAULT];
 
       const fallbackSettings: CurrencySettings = {
         id: 1,

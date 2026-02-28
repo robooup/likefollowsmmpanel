@@ -211,7 +211,7 @@ async function handleAddOrder(req: NextRequest, params: Params, user: { id: numb
     const { currencies: c } = await fetchCurrencyData();
     currencies = c || [];
   } catch {
-    currencies = [{ code: 'USD', rate: 1 }, { code: 'USDT', rate: 1 }];
+    currencies = [{ code: 'USD', rate: 1 }];
   }
 
   const calculatedUsdPrice = (service.rate * qty) / 1000;

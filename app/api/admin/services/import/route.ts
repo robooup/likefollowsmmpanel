@@ -1,6 +1,6 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { convertToUSD } from '@/lib/currency-utils';
+import { convertToUSD, USD_DEFAULT } from '@/lib/currency-utils';
 import { trimSyncLogsToMax } from '@/lib/sync-logs-cleanup';
 import { NextRequest, NextResponse } from 'next/server';
 import { sendNewServiceNotification } from '@/lib/notifications/user-notifications';
@@ -1029,25 +1029,21 @@ export async function PUT(req: NextRequest) {
 
       console.log('✅ Provider found:', provider.name);
 
-      const currencies = await db.currencies.findMany({
+      const fromDb = await db.currencies.findMany({
         where: { enabled: true },
-        select: {
-          id: true,
-          code: true,
-          symbol: true,
-          rate: true,
-          name: true,
-          enabled: true
-        }
+        select: { id: true, code: true, symbol: true, rate: true, name: true, enabled: true }
       });
-      const formattedCurrencies = currencies.map(c => ({
-        id: c.id,
-        code: c.code,
-        symbol: c.symbol,
-        rate: Number(c.rate),
-        name: c.name,
-        enabled: c.enabled
-      }));
+      const formattedCurrencies = [
+        USD_DEFAULT,
+        ...fromDb.filter(c => c.code !== 'USD').map(c => ({
+          id: c.id,
+          code: c.code,
+          symbol: c.symbol,
+          rate: Number(c.rate),
+          name: c.name,
+          enabled: c.enabled
+        }))
+      ];
 
       let importedCount = 0;
       let skippedCount = 0;

@@ -1,48 +1,6 @@
+import { USD_DEFAULT } from '@/lib/currency-utils';
 
-export const defaultCurrencies = [
-  {
-    code: 'USD',
-    name: 'US Dollar',
-    symbol: '$',
-    rate: 1.0000,
-    enabled: true,
-  },
-  {
-    code: 'EUR',
-    name: 'Euro',
-    symbol: '€',
-    rate: 0.8500,
-    enabled: true,
-  },
-  {
-    code: 'GBP',
-    name: 'British Pound',
-    symbol: '£',
-    rate: 0.7300,
-    enabled: true,
-  },
-  {
-    code: 'JPY',
-    name: 'Japanese Yen',
-    symbol: '¥',
-    rate: 150.0000,
-    enabled: false,
-  },
-  {
-    code: 'BDT',
-    name: 'Bangladeshi Taka',
-    symbol: '৳',
-    rate: 110.0000,
-    enabled: true,
-  },
-  {
-    code: 'INR',
-    name: 'Indian Rupee',
-    symbol: '₹',
-    rate: 83.0000,
-    enabled: false,
-  },
-];
+export const defaultCurrencies = [USD_DEFAULT];
 
 export const defaultCurrencySettings = {
   defaultCurrency: 'USD',
@@ -50,7 +8,7 @@ export const defaultCurrencySettings = {
   currencyPosition: 'left',
   thousandsSeparator: ',',
   decimalSeparator: '.',
-};
+};
 export const formatCurrency = (
   amount: number,
   currencyCode: string,
@@ -60,10 +18,10 @@ export const formatCurrency = (
   if (!currency) return `${amount}`;
 
   const { symbol } = currency;
-  const { displayDecimals, currencyPosition, thousandsSeparator, decimalSeparator } = settings;
+  const { displayDecimals, currencyPosition, thousandsSeparator, decimalSeparator } = settings;
   const parts = amount.toFixed(displayDecimals).split('.');
   parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSeparator);
-  const formattedAmount = parts.join(decimalSeparator);
+  const formattedAmount = parts.join(decimalSeparator);
   switch (currencyPosition) {
     case 'left':
       return `${symbol}${formattedAmount}`;

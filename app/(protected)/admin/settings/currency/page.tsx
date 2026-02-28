@@ -111,11 +111,13 @@ const Toast = ({
   </div>
 );
 
-const Switch = ({ checked, onCheckedChange, onClick, title }: any) => (
+const Switch = ({ checked, onCheckedChange, onClick, title, disabled }: { checked?: boolean; onCheckedChange?: () => void; onClick?: () => void; title?: string; disabled?: boolean }) => (
   <button
-    onClick={onClick}
+    type="button"
+    onClick={disabled ? undefined : onClick}
     title={title}
-    className={`switch ${checked ? 'switch-checked' : 'switch-unchecked'}`}
+    disabled={disabled}
+    className={`switch ${checked ? 'switch-checked' : 'switch-unchecked'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
   >
     <span className="switch-thumb" />
   </button>
@@ -168,8 +170,9 @@ const CurrencyItem = ({
             <div className="flex justify-start col-span-2">
               <Switch
                 checked={currency.enabled}
-                onClick={() => onToggleStatus(currency.id)}
-                title={`${currency.enabled ? 'Disable' : 'Enable'} ${currency.code}`}
+                onClick={() => currency.code !== 'USD' && onToggleStatus(currency.id)}
+                title={currency.code === 'USD' ? 'USD is always enabled' : `${currency.enabled ? 'Disable' : 'Enable'} ${currency.code}`}
+                disabled={currency.code === 'USD'}
               />
             </div>
             <input
@@ -247,8 +250,9 @@ const CurrencyItem = ({
             <div className="flex justify-start col-span-2">
               <Switch
                 checked={currency.enabled}
-                onClick={() => onToggleStatus(currency.id)}
-                title={`${currency.enabled ? 'Disable' : 'Enable'} ${currency.code}`}
+                onClick={() => currency.code !== 'USD' && onToggleStatus(currency.id)}
+                title={currency.code === 'USD' ? 'USD is always enabled' : `${currency.enabled ? 'Disable' : 'Enable'} ${currency.code}`}
+                disabled={currency.code === 'USD'}
               />
             </div>
             <span className="font-mono font-semibold text-left col-span-2">{currency.code}</span>

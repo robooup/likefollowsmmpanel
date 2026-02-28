@@ -183,11 +183,8 @@ export async function POST(request: Request) {
       currencies = currencyData.currencies || [];
     } catch (currencyError) {
       console.error('Error fetching currency data:', currencyError);
-      currencies = [
-        { id: 1, code: 'USD', name: 'US Dollar', symbol: '$', rate: 1.0000, enabled: true },
-        { id: 2, code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', rate: 110.0000, enabled: true },
-        { id: 3, code: 'USDT', name: 'Tether USD', symbol: '₮', rate: 1.0000, enabled: true },
-      ];
+      const { USD_DEFAULT } = await import('@/lib/currency-utils');
+      currencies = [USD_DEFAULT];
     }
     
     let totalCost = 0;

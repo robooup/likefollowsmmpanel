@@ -3,6 +3,7 @@
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
 import React, { useEffect, useState, useMemo } from 'react';
+import { USD_DEFAULT } from '@/lib/currency-utils';
 import {
     FaCheckCircle,
     FaChevronDown,
@@ -87,8 +88,8 @@ const ChildPanel: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const nameservers = {
-    ns1: 'ns1.likefollowsmmpanel.com',
-    ns2: 'ns2.likefollowsmmpanel.com',
+    ns1: 'ns1.smmdoc.com',
+    ns2: 'ns2.smmdoc.com',
   };
 
   useEffect(() => {
@@ -128,10 +129,7 @@ const ChildPanel: React.FC = () => {
 
       } catch (error) {
         console.error('Error fetching data:', error);
-        setCurrencies([
-          { id: 1, code: 'USD', name: 'US Dollar', symbol: '$', rate: 1.0, enabled: true },
-          { id: 5, code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', rate: 110.0, enabled: true },
-        ]);
+        setCurrencies([USD_DEFAULT]);
       } finally {
         setIsDataLoading(false);
       }

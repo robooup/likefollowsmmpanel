@@ -8,6 +8,15 @@ export interface Currency {
   enabled: boolean;
 }
 
+export const USD_DEFAULT: Currency = {
+  id: 0,
+  code: 'USD',
+  name: 'US Dollar',
+  symbol: '$',
+  rate: 1.0000,
+  enabled: true,
+};
+
 export interface CurrencySettings {
   id: number;
   defaultCurrency: string;
@@ -44,21 +53,23 @@ export async function fetchCurrencyData(): Promise<{
 
       const { db } = await import('@/lib/db');
 
-      const enabledCurrencies = await db.currencies.findMany({
+      const enabledFromDb = await db.currencies.findMany({
         where: { enabled: true },
         orderBy: { code: 'asc' }
       });
-
-      currenciesData = {
-        success: true,
-        currencies: enabledCurrencies.map(c => ({
+      const dbCurrencies = enabledFromDb
+        .filter(c => c.code !== 'USD')
+        .map(c => ({
           id: c.id,
           code: c.code,
           name: c.name,
           symbol: c.symbol,
           rate: Number(c.rate),
           enabled: c.enabled
-        }))
+        }));
+      currenciesData = {
+        success: true,
+        currencies: [USD_DEFAULT, ...dbCurrencies]
       };
 
       try {
@@ -146,14 +157,7 @@ export async function fetchCurrencyData(): Promise<{
         stack: error.stack
       });
     }
-    const fallbackCurrencies: Currency[] = [
-      { id: 1, code: 'USD', name: 'US Dollar', symbol: '$', rate: 1.0000, enabled: true },
-      { id: 2, code: 'EUR', name: 'Euro', symbol: '€', rate: 0.85, enabled: true },
-      { id: 3, code: 'GBP', name: 'British Pound', symbol: '£', rate: 0.73, enabled: true },
-      { id: 4, code: 'JPY', name: 'Japanese Yen', symbol: '¥', rate: 110.0, enabled: true },
-      { id: 5, code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', rate: 110.0000, enabled: true },
-      { id: 6, code: 'USDT', name: 'Tether USD', symbol: '₮', rate: 1.0000, enabled: true },
-    ];
+    const fallbackCurrencies: Currency[] = [USD_DEFAULT];
 
     const fallbackSettings: CurrencySettings = {
       id: 1,

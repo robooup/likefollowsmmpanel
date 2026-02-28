@@ -16,6 +16,14 @@ export async function updateUserCurrency(currency: string): Promise<boolean> {
     const session = await auth();
     if (!session?.user?.id) return false;
 
+    if (currency === 'USD') {
+      await db.users.update({
+        where: { id: session.user.id },
+        data: { currency: 'USD' },
+      });
+      return true;
+    }
+
     const allowed = await db.currencies.findFirst({
       where: { code: currency, enabled: true },
     });

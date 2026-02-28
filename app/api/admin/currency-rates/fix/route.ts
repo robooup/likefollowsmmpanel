@@ -2,17 +2,7 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
-const CORRECT_RATES = {
-  USD: 1.0000,
-  BDT: 110.0000,
-  XCD: 2.7000,
-  USDT: 1.0000,
-  EUR: 0.8500,
-  GBP: 0.7300,
-  JPY: 150.0000,
-  CAD: 1.3500,
-  AUD: 1.5000,
-};
+const CORRECT_RATES: Record<string, number> = {};
 
 export async function POST() {
   try {
@@ -22,7 +12,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('ðŸ”§ Fixing currency rates manually...');
+    console.log('Fixing currency rates manually...');
 
     const updatedCurrencies = [];
 

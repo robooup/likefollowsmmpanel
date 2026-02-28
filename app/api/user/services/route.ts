@@ -1,22 +1,28 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
+import { USD_DEFAULT } from '@/lib/currency-utils';
 import { NextResponse } from 'next/server';
 import { serializeServices } from '@/lib/utils';
 
 async function fetchCurrencyData() {
   try {
-    const currencies = await db.currencies.findMany({
+    const fromDb = await db.currencies.findMany({
       where: { enabled: true },
-      select: {
-        code: true,
-        symbol: true,
-        rate: true,
-      },
+      select: { code: true, symbol: true, rate: true },
     });
+    const dbCurrencies = fromDb.filter(c => c.code !== 'USD').map(c => ({
+      code: c.code,
+      symbol: c.symbol,
+      rate: Number(c.rate),
+    }));
+    const currencies = [
+      { code: USD_DEFAULT.code, symbol: USD_DEFAULT.symbol, rate: USD_DEFAULT.rate },
+      ...dbCurrencies,
+    ];
     return { currencies };
   } catch (error) {
     console.error('Error fetching currency data:', error);
-    return { currencies: [] };
+    return { currencies: [{ code: USD_DEFAULT.code, symbol: USD_DEFAULT.symbol, rate: USD_DEFAULT.rate }] };
   }
 }
 

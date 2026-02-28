@@ -122,12 +122,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const availableCurrencies = await db.currencies.findMany({
+    const { USD_DEFAULT } = await import('@/lib/currency-utils');
+    const fromDb = await db.currencies.findMany({
       where: { enabled: true },
       orderBy: { code: 'asc' }
     });
+    const availableCurrencies = [
+      USD_DEFAULT,
+      ...fromDb.filter((c: { code: string }) => c.code !== 'USD').map((c: { id: number; code: string; name: string; symbol: string; rate: unknown; enabled: boolean }) => ({ ...c, rate: Number(c.rate) })),
+    ];
 
-    const adminCurrencyInfo = availableCurrencies.find((c: any) => c.code === adminCurrency);
+    const adminCurrencyInfo = availableCurrencies.find((c: { code: string }) => c.code === adminCurrency);
     const adminCurrencySymbol = adminCurrencyInfo?.symbol || '$';
 
     let amountToAdd: number;

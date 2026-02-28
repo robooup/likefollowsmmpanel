@@ -18,14 +18,15 @@ export async function POST(req: Request) {
     const { currency } = await req.json();
     console.log('Currency API: Requested currency:', currency);
 
-    let validCurrencies = ['USD', 'BDT', 'USDT'];
+    let validCurrencies: string[] = ['USD'];
 
     try {
       const enabledCurrencies = await db.currencies.findMany({
         where: { enabled: true },
         select: { code: true }
       });
-      validCurrencies = enabledCurrencies.map(c => c.code);
+      const dbCodes = enabledCurrencies.map(c => c.code);
+      validCurrencies = ['USD', ...dbCodes.filter(c => c !== 'USD')];
     } catch (error) {
       console.log('Currency API: Failed to load enabled currencies from DB, using fallback');
     }

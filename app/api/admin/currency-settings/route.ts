@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
-import { clearCurrencyCache } from '@/lib/currency-utils';
+import { clearCurrencyCache, USD_DEFAULT } from '@/lib/currency-utils';
 import { NextResponse } from 'next/server';
 
 const defaultCurrencySettings = {
@@ -12,58 +12,6 @@ const defaultCurrencySettings = {
   decimalSeparator: '.',
   updatedAt: new Date(),
 };
-
-const defaultCurrencies = [
-  {
-    code: 'USD',
-    name: 'US Dollar',
-    symbol: '$',
-    rate: 1.0000,
-    enabled: true,
-  },
-  {
-    code: 'EUR',
-    name: 'Euro',
-    symbol: '€',
-    rate: 0.8500,
-    enabled: true,
-  },
-  {
-    code: 'GBP',
-    name: 'British Pound',
-    symbol: '£',
-    rate: 0.7300,
-    enabled: true,
-  },
-  {
-    code: 'JPY',
-    name: 'Japanese Yen',
-    symbol: '¥',
-    rate: 150.0000,
-    enabled: false,
-  },
-  {
-    code: 'BDT',
-    name: 'Bangladeshi Taka',
-    symbol: '৳',
-    rate: 110.0000,
-    enabled: true,
-  },
-  {
-    code: 'USDT',
-    name: 'Tether USD',
-    symbol: '₮',
-    rate: 1.0000,
-    enabled: true,
-  },
-  {
-    code: 'XCD',
-    name: 'East Caribbean Dollar',
-    symbol: 'EC$',
-    rate: 2.7000,
-    enabled: true,
-  },
-];
 
 export async function GET() {
   try {
@@ -80,35 +28,15 @@ export async function GET() {
       });
     }
 
-    let currencies = await db.currencies.findMany({
+    const currenciesFromDb = await db.currencies.findMany({
       orderBy: { code: 'asc' }
     });
 
-    if (currencies.length === 0) {
-      for (const currency of defaultCurrencies) {
-        await db.currencies.upsert({
-          where: { code: currency.code },
-          update: {
-            name: currency.name,
-            symbol: currency.symbol,
-            rate: currency.rate,
-            enabled: currency.enabled
-          },
-          create: {
-            ...currency,
-            updatedAt: new Date()
-          }
-        });
-      }
-      currencies = await db.currencies.findMany({
-        orderBy: { code: 'asc' }
-      });
-    }
+    const dbCurrencies = currenciesFromDb
+      .filter(c => c.code !== 'USD')
+      .map(c => ({ ...c, rate: Number(c.rate) }));
 
-    const formattedCurrencies = currencies.map(currency => ({
-      ...currency,
-      rate: Number(currency.rate)
-    }));
+    const formattedCurrencies = [USD_DEFAULT, ...dbCurrencies];
 
     return NextResponse.json({
       success: true,
@@ -184,35 +112,16 @@ export async function POST(request: Request) {
       const existingCodes = existingCurrencies.map(c => c.code);
       const newCodes = currencies.map(c => c.code);
 
-      const codesToDelete = existingCodes.filter(code => !newCodes.includes(code));
+      const codesToDelete = existingCodes.filter(code => !newCodes.includes(code) && code !== 'USD');
 
       for (const codeToDelete of codesToDelete) {
-        if (codeToDelete !== 'USD') {
-          await db.currencies.delete({
-            where: { code: codeToDelete }
-          });
-        } else {
-          throw new Error('Cannot delete USD - it\'s the core currency');
-        }
+        await db.currencies.delete({
+          where: { code: codeToDelete }
+        });
       }
 
       for (const currency of currencies) {
-        if (currency.code === 'USD') {
-          const existingUSD = await db.currencies.findUnique({
-            where: { code: 'USD' }
-          });
-          
-          if (existingUSD) {
-            await db.currencies.update({
-              where: { code: 'USD' },
-              data: {
-                enabled: currency.enabled,
-                updatedAt: new Date()
-              }
-            });
-            continue;
-          }
-        }
+        if (currency.code === 'USD') continue;
 
         const rateValue = typeof currency.rate === 'number' 
           ? currency.rate 
