@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { DEFAULT_SMM_API_SPEC } from '@/lib/provider-api-specification';
@@ -7,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    const baseUrl = baseUrlSync() || baseUrlSync() || '';
     let spec = { ...DEFAULT_SMM_API_SPEC };
     let httpMethod = 'POST';
 

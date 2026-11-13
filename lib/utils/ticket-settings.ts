@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { createTenantCache } from '@/lib/tenant/key';
 
 interface TicketSettings {
   ticketSystemEnabled: boolean;
@@ -10,16 +11,15 @@ const DEFAULT_TICKET_SETTINGS: TicketSettings = {
   maxPendingTickets: '3',
 };
 
-let cachedTicketSettings: TicketSettings | null = null;
-let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
+const settingsCache = createTenantCache<TicketSettings>(CACHE_DURATION);
 
 export async function getTicketSettings(bypassCache = false): Promise<TicketSettings> {
-  const now = Date.now();
-
-  if (!bypassCache && cachedTicketSettings && (now - lastFetchTime) < CACHE_DURATION) {
-    return cachedTicketSettings;
+  if (!bypassCache) {
+    const cached = settingsCache.get();
+    if (cached) return cached;
   }
+  let cachedTicketSettings: TicketSettings;
 
   try {
     const settings = await db.ticketSettings.findFirst();
@@ -28,7 +28,7 @@ export async function getTicketSettings(bypassCache = false): Promise<TicketSett
         ticketSystemEnabled: settings.ticketSystemEnabled ?? DEFAULT_TICKET_SETTINGS.ticketSystemEnabled,
         maxPendingTickets: settings.maxPendingTickets || DEFAULT_TICKET_SETTINGS.maxPendingTickets,
       };
-      lastFetchTime = now;
+      settingsCache.set(cachedTicketSettings);
       return cachedTicketSettings;
     }
   } catch (error) {
@@ -37,11 +37,10 @@ export async function getTicketSettings(bypassCache = false): Promise<TicketSett
   }
 
   cachedTicketSettings = { ...DEFAULT_TICKET_SETTINGS };
-  lastFetchTime = now;
+  settingsCache.set(cachedTicketSettings);
   return cachedTicketSettings;
 }
 
 export function clearTicketSettingsCache(): void {
-  cachedTicketSettings = null;
-  lastFetchTime = 0;
+  settingsCache.clear();
 }

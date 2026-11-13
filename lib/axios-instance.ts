@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import axios from "axios";
 import { logger } from "./utils/logger";
 
@@ -6,14 +7,10 @@ const getBaseUrl = () => {
     return window.location.origin;
   }
 
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
-    throw new Error('NEXT_PUBLIC_APP_URL environment variable is required');
-  }
-  return process.env.NEXT_PUBLIC_APP_URL;
+  return baseUrlSync();
 };
 
 const axiosInstance = axios.create({
-  baseURL: getBaseUrl(),
   withCredentials: false,
   headers: {
     "Content-Type": "application/json",
@@ -21,6 +18,13 @@ const axiosInstance = axios.create({
   },
   timeout: 60000,
 });
+
+// Resolved per request: one server process serves many panel domains.
+axiosInstance.interceptors.request.use((config) => {
+  if (!config.baseURL) config.baseURL = getBaseUrl();
+  return config;
+});
+
 
 axiosInstance.interceptors.request.use(
   (config) => {

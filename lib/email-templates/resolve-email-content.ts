@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 
 
 import { getCustomEmailTemplate } from './get-custom-template';
@@ -18,7 +19,7 @@ export async function resolveEmailContent(
   const custom = await getCustomEmailTemplate(templateKey);
   if (!custom) return null;
   const layoutData = await getEmailLayoutDataFromSettings();
-  const appUrl = layoutData.appUrl || process.env.NEXT_PUBLIC_APP_URL || '';
+  const appUrl = layoutData.appUrl || baseUrlSync() || '';
   const mergedContext: EmailTemplateContext = {
     ...context,
     sitename: layoutData.siteName,

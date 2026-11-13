@@ -1,24 +1,8 @@
-import { getAppNameSync, getGeneralSettings } from '@/lib/utils/general-settings';
 
-let isInitialized = false;
-
-async function initializeSettings() {
-  if (!isInitialized && typeof window === 'undefined') {
-    try {
-      await getGeneralSettings();
-      isInitialized = true;
-    } catch (error) {
-      console.warn('Failed to initialize general settings:', error);
-    }
-  }
-}
-
-if (typeof window === 'undefined') {
-  initializeSettings();
-}
-
-export const APP_NAME = getAppNameSync();
+/** @deprecated resolved per panel now; use getAppName(). */
+export const APP_NAME = '';
 export const APP_DESCRIPTION = process.env.NEXT_PUBLIC_APP_DESCRIPTION;
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL;
+/** @deprecated one process serves many sites now; use baseUrlSync(). */
+export const APP_URL = undefined as string | undefined;
 
 export const DEFAULT_USER_PLACEHOLDER = '/general/user-placeholder.jpg';

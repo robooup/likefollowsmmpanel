@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { createTenantCache } from '@/lib/tenant/key';
 
 interface PaymentGatewayConfig {
   gatewayName: string;
@@ -14,16 +15,14 @@ const defaultConfig: PaymentGatewayConfig = {
   mode: 'Live',
 };
 
-let cachedConfig: PaymentGatewayConfig | null = null;
-let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
+// One entry per panel: a panel must never see another panel's gateway keys.
+const configCache = createTenantCache<PaymentGatewayConfig>(CACHE_DURATION);
 
 export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
-  const now = Date.now();
-
-  if (cachedConfig && (now - cacheTimestamp) < CACHE_DURATION) {
-    return cachedConfig;
-  }
+  const cached = configCache.get();
+  if (cached) return cached;
+  let cachedConfig: PaymentGatewayConfig;
 
   try {
     const settings = await db.paymentGatewaySettings.findFirst();
@@ -47,11 +46,11 @@ export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
       cachedConfig = defaultConfig;
     }
 
-    cacheTimestamp = now;
+    configCache.set(cachedConfig);
     return cachedConfig;
   } catch (error) {
     console.error('Error fetching payment gateway settings:', error);
-    return cachedConfig || defaultConfig;
+    return configCache.peek() || defaultConfig;
   }
 }
 
@@ -174,7 +173,6 @@ export async function isPaymentGatewaySandbox(): Promise<boolean> {
 }
 
 export function clearPaymentGatewayCache(): void {
-  cachedConfig = null;
-  cacheTimestamp = 0;
+  configCache.clear();
 }
 

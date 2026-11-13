@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import nodemailer, { Transporter } from "nodemailer";
 import { createEmailTransporter, getFromEmailAddress, invalidateEmailConfigCache } from './email-config';
 import { getAppName } from './utils/general-settings';
@@ -87,7 +88,7 @@ export const sendVerificationEmail = async (
   token: string,
   userName?: string
 ): Promise<boolean> => {
-  const verificationUrl = `${process.env.NEXTAUTH_URL}/auth/verify-email?token=${token}`;
+  const verificationUrl = `${baseUrlSync()}/auth/verify-email?token=${token}`;
   const name = userName || 'User';
   const appName = await getAppName();
 
@@ -118,7 +119,7 @@ export const sendPasswordResetEmail = async (
   token: string,
   userName?: string
 ): Promise<boolean> => {
-  const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${token}`;
+  const resetUrl = `${baseUrlSync()}/auth/reset-password?token=${token}`;
   const name = userName || 'User';
   const appName = await getAppName();
 

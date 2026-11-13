@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 
 import { auth } from '@/auth';
 import {
@@ -12,8 +13,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function OPTIONS(req: NextRequest) {
   const requestOrigin =
     req.headers.get('origin') ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXTAUTH_URL ||
+    baseUrlSync() ||
+    baseUrlSync() ||
     '*';
 
   return NextResponse.json(

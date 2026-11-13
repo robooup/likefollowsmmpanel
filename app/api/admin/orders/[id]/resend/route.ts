@@ -1,4 +1,5 @@
-﻿import { auth } from '@/auth';
+import { baseUrlSync } from '@/lib/tenant/url';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { ProviderOrderForwarder } from '@/lib/utils/provider-order-forwarder';
@@ -501,9 +502,9 @@ export async function POST(
 
     if (updatedOrder.providerOrderId && updatedOrder.service.providerId) {
       try {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-          process.env.NEXTAUTH_URL || 
-          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+        const baseUrl = baseUrlSync() || 
+          baseUrlSync() || 
+          null;
         
         if (!baseUrl) {
           throw new Error('NEXT_PUBLIC_APP_URL or NEXTAUTH_URL environment variable is required');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCurrentUser } from '@/hooks/use-current-user';
-import ActivateAffiliateContent from '@/app/(protected)/affiliate/activate/page';
+import ActivateAffiliateContent from '@/app/(panel)/(protected)/affiliate/activate/page';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
 import { formatID, formatNumber } from '@/lib/utils';

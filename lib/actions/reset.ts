@@ -1,5 +1,6 @@
 "use server";
 
+import { baseUrlSync } from '@/lib/tenant/url';
 import { getUserByEmail } from "@/data/user";
 import * as z from "zod";
 import { db } from "../db";
@@ -47,7 +48,7 @@ export const resetPassword = async (values: z.infer<typeof resetSchema>) => {
       await sendMail({
         sendTo: email,
         subject: "Reset Password - Verification Code",
-        html: `Your password reset code is: <strong>${resetPasswordToken.token}</strong>. Visit ${process.env.NEXT_PUBLIC_APP_URL}/new-password?token=${resetPasswordToken.token} to reset your password.`,
+        html: `Your password reset code is: <strong>${resetPasswordToken.token}</strong>. Visit ${baseUrlSync()}/new-password?token=${resetPasswordToken.token} to reset your password.`,
       });
     }
     return {

@@ -1,10 +1,11 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 
 
 import type { EmailLayoutData } from './shared/email-layout';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || '';
 
 export async function getEmailLayoutDataFromSettings(overrides?: Partial<EmailLayoutData>): Promise<EmailLayoutData> {
+  const APP_URL = baseUrlSync() || '';
   try {
     const { getGeneralSettings } = await import('@/lib/utils/general-settings');
     const settings = await getGeneralSettings();

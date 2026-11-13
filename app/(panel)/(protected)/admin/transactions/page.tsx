@@ -48,7 +48,7 @@ const UpdateTransactionStatusModal = dynamic(
 );
 
 const TransactionsTable = dynamic(
-  () => import('../../../../components/admin/transactions/transactions-table'),
+  () => import('@/components/admin/transactions/transactions-table'),
   { ssr: false }
 );
 const formatID = (id: any) => id;

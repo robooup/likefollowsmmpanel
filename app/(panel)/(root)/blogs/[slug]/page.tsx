@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import BlogPostDetailClient from '../blog-details/page';
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
     const siteUrl = generalSettings.siteUrl;
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    const baseUrl = baseUrlSync() || baseUrlSync();
 
     if (!baseUrl) {
       throw new Error('NEXT_PUBLIC_APP_URL or NEXTAUTH_URL environment variable is required');
@@ -119,7 +120,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   try {
     const { slug } = await params;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    const baseUrl = baseUrlSync() || baseUrlSync();
 
     if (!baseUrl) {
       throw new Error('NEXT_PUBLIC_APP_URL or NEXTAUTH_URL environment variable is required');

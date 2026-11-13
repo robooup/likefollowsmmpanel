@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { createTenantCache } from '@/lib/tenant/key';
 
 interface ModuleSettings {
   affiliateSystemEnabled: boolean;
@@ -24,16 +25,15 @@ const DEFAULT_MODULE_SETTINGS: ModuleSettings = {
   servicesListPublic: true,
 };
 
-let cachedModuleSettings: ModuleSettings | null = null;
-let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
+const settingsCache = createTenantCache<ModuleSettings>(CACHE_DURATION);
 
 export async function getModuleSettings(bypassCache = false): Promise<ModuleSettings> {
-  const now = Date.now();
-
-  if (!bypassCache && cachedModuleSettings && (now - lastFetchTime) < CACHE_DURATION) {
-    return cachedModuleSettings;
+  if (!bypassCache) {
+    const cached = settingsCache.get();
+    if (cached) return cached;
   }
+  let cachedModuleSettings: ModuleSettings;
 
   try {
     const settings = await db.moduleSettings.findFirst();
@@ -49,7 +49,7 @@ export async function getModuleSettings(bypassCache = false): Promise<ModuleSett
         massOrderEnabled: settings.massOrderEnabled ?? DEFAULT_MODULE_SETTINGS.massOrderEnabled,
         servicesListPublic: settings.servicesListPublic ?? DEFAULT_MODULE_SETTINGS.servicesListPublic,
       };
-      lastFetchTime = now;
+      settingsCache.set(cachedModuleSettings);
       return cachedModuleSettings;
     }
   } catch (error) {
@@ -58,12 +58,11 @@ export async function getModuleSettings(bypassCache = false): Promise<ModuleSett
   }
 
   cachedModuleSettings = { ...DEFAULT_MODULE_SETTINGS };
-  lastFetchTime = now;
+  settingsCache.set(cachedModuleSettings);
   return cachedModuleSettings;
 }
 
 export function clearModuleSettingsCache(): void {
-  cachedModuleSettings = null;
-  lastFetchTime = 0;
+  settingsCache.clear();
 }
 

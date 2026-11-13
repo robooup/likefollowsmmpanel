@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 
 
 function getAppPort(): string {
@@ -6,7 +7,7 @@ function getAppPort(): string {
     return process.env.PORT;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+  const appUrl = baseUrlSync() || baseUrlSync();
   if (appUrl) {
     try {
       const urlObj = new URL(appUrl);
@@ -84,7 +85,7 @@ export function ensureLocalhostPort(url: string): string {
 }
 
 export function getAppUrlWithPort(): string {
-  let appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+  let appUrl = baseUrlSync() || baseUrlSync();
 
   if (!appUrl) {
 

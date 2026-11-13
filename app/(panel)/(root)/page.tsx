@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import dynamic from 'next/dynamic';
 import { Metadata } from 'next';
 import { getMetaSettings, getDisplayTitle, getOpenGraphImageUrl } from '@/lib/utils/meta-settings';
@@ -13,10 +14,10 @@ const FAQs = dynamic(() => import('@/components/frontend/homepage/faqs'));
 
 export async function generateMetadata(): Promise<Metadata> {
   const metaSettings = await getMetaSettings();
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
+  if (!baseUrlSync()) {
     throw new Error('NEXT_PUBLIC_APP_URL environment variable is required');
   }
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = baseUrlSync();
   const openGraphImage = getOpenGraphImageUrl(metaSettings.thumbnail, baseUrl);
   const displayTitle = getDisplayTitle(metaSettings);
 

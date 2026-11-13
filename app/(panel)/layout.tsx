@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import '@/app/globals.css';
 import { auth } from '@/auth';
 import { CustomCodesInjector } from '@/components/custom-codes-injector';
@@ -8,7 +9,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import OfflineDetector from '@/components/offline-detector';
 import DatabaseConnectionDetector from '@/components/database-connection-detector';
 import ServiceWorkerRegistration from '@/components/service-worker-registration';
-import { APP_DESCRIPTION, APP_URL } from '@/lib/constants';
+import { APP_DESCRIPTION } from '@/lib/constants';
 import { getAppName } from '@/lib/utils/general-settings';
 import type { Metadata } from 'next';
 import { SessionProvider } from 'next-auth/react';
@@ -19,7 +20,7 @@ import { getUserCurrency } from '@/lib/actions/currency';
 import { Nunito } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
-import StoreProvider from './store-provider';
+import StoreProvider from '@/app/store-provider';
 import { QueryProvider } from '@/components/providers/query-provider';
 import UserSwitchWrapper from '@/components/admin/user-switch-wrapper';
 import FaviconUpdater from '@/components/favicon-updater';
@@ -42,7 +43,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: `${appName}`,
     },
     description: `${APP_DESCRIPTION}`,
-    metadataBase: new URL(APP_URL || process.env.NEXT_PUBLIC_APP_URL!),
+    metadataBase: new URL(baseUrlSync() || 'http://localhost'),
     icons: {
       icon: [
         { url: faviconUrl, type: 'image/png', sizes: 'any' },

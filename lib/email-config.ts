@@ -1,5 +1,6 @@
 import { db as prisma } from './db';
 import nodemailer, { Transporter } from 'nodemailer';
+import { tenantCacheKey } from './tenant/key';
 
 export interface EmailConfig {
   host: string;
@@ -21,16 +22,27 @@ type EmailCache = {
   cachedAt: number;
 };
 
-let emailCache: EmailCache | null = null;
+// One SMTP transporter per panel (each panel has its own mail settings).
+const emailCaches = new Map<string, EmailCache>();
+
+function currentEmailCache(): EmailCache | null {
+  const key = tenantCacheKey();
+  return key ? emailCaches.get(key) ?? null : null;
+}
+
+function closeTransporter(cache: EmailCache) {
+  try {
+    cache.transporter.close();
+  } catch {
+  }
+}
 
 export function invalidateEmailConfigCache(): void {
-  if (emailCache) {
-    try {
-      emailCache.transporter.close();
-    } catch {
-    }
-    emailCache = null;
-    console.log('Email config cache invalidated');
+  const key = tenantCacheKey();
+  const cache = key ? emailCaches.get(key) : null;
+  if (key && cache) {
+    closeTransporter(cache);
+    emailCaches.delete(key);
   }
 }
 
@@ -65,6 +77,7 @@ export async function getEmailConfig(): Promise<EmailConfig | null> {
 
 export async function createEmailTransporter(): Promise<Transporter | null> {
   const now = Date.now();
+  const emailCache = currentEmailCache();
   if (emailCache && now - emailCache.cachedAt < CACHE_TTL_MS) {
     return emailCache.transporter;
   }
@@ -109,12 +122,18 @@ export async function createEmailTransporter(): Promise<Transporter | null> {
     }
 
     const fromEmail = config.from || config.auth.user;
-    emailCache = {
-      config,
-      transporter,
-      fromEmail,
-      cachedAt: Date.now(),
-    };
+    const key = tenantCacheKey();
+    if (key) {
+      if (emailCaches.size >= 200) {
+        // Bound the number of open SMTP pools.
+        for (const [oldKey, old] of emailCaches) {
+          closeTransporter(old);
+          emailCaches.delete(oldKey);
+          if (emailCaches.size < 150) break;
+        }
+      }
+      emailCaches.set(key, { config, transporter, fromEmail, cachedAt: Date.now() });
+    }
     return transporter;
   } catch (error) {
     const err = error as Error & { code?: string; command?: string; response?: string; responseCode?: number };
@@ -132,6 +151,7 @@ export async function createEmailTransporter(): Promise<Transporter | null> {
 
 export async function getFromEmailAddress(): Promise<string | null> {
   const now = Date.now();
+  const emailCache = currentEmailCache();
   if (emailCache && now - emailCache.cachedAt < CACHE_TTL_MS) {
     return emailCache.fromEmail;
   }

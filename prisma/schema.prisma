@@ -1089,3 +1089,137 @@ enum user_role {
   admin
   moderator
 }
+
+// ---------------------------------------------------------------------------
+// TopupCraft SaaS control plane.
+// These tables are only used in the platform database (PLATFORM_DATABASE_URL).
+// They exist (empty) in every panel database too, so one schema / one client
+// covers both and `prisma db push` works the same everywhere.
+// ---------------------------------------------------------------------------
+
+model SaasUser {
+  id             Int           @id @default(autoincrement())
+  email          String        @unique
+  name           String
+  passwordHash   String
+  role           String        @default("customer") // customer | admin
+  status         String        @default("active") // active | blocked
+  sessionVersion Int           @default(1)
+  lastLoginAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  panels         SaasPanel[]
+  invoices       SaasInvoice[]
+
+  @@map("saas_users")
+}
+
+model SaasPlan {
+  id           Int           @id @default(autoincrement())
+  slug         String        @unique
+  name         String
+  description  String        @default("")
+  priceMonthly Int // whole units of `currency`
+  currency     String        @default("BDT")
+  features     Json          @default("[]")
+  isPopular    Boolean       @default(false)
+  isActive     Boolean       @default(true)
+  sortOrder    Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  panels       SaasPanel[]
+  invoices     SaasInvoice[]
+
+  @@map("saas_plans")
+}
+
+model SaasPanel {
+  id            Int               @id @default(autoincrement())
+  ownerId       Int
+  planId        Int
+  name          String
+  // pending_payment | provisioning | active | suspended | expired | terminated | failed
+  status        String            @default("pending_payment")
+  statusReason  String?
+  dbName        String?           @unique
+  adminEmail    String
+  adminUsername String
+  expiresAt     DateTime?
+  provisionedAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  owner         SaasUser          @relation(fields: [ownerId], references: [id])
+  plan          SaasPlan          @relation(fields: [planId], references: [id])
+  domains       SaasPanelDomain[]
+  invoices      SaasInvoice[]
+
+  @@index([ownerId])
+  @@index([status, expiresAt])
+  @@map("saas_panels")
+}
+
+model SaasPanelDomain {
+  id         Int       @id @default(autoincrement())
+  panelId    Int
+  host       String    @unique
+  type       String // subdomain | custom
+  status     String    @default("pending") // pending | active
+  isPrimary  Boolean   @default(false)
+  lastCheck  DateTime?
+  lastError  String?
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  panel      SaasPanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+
+  @@index([panelId])
+  @@map("saas_panel_domains")
+}
+
+model SaasInvoice {
+  id               Int        @id @default(autoincrement())
+  number           String     @unique
+  userId           Int
+  panelId          Int?
+  planId           Int
+  type             String // new | renewal
+  months           Int        @default(1)
+  amount           Int
+  currency         String     @default("BDT")
+  status           String     @default("unpaid") // unpaid | paid | cancelled
+  gateway          String     @default("uddoktapay")
+  gatewayInvoiceId String?    @unique
+  paymentMethod    String?
+  transactionId    String?
+  paidAt           DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  user             SaasUser   @relation(fields: [userId], references: [id])
+  panel            SaasPanel? @relation(fields: [panelId], references: [id], onDelete: SetNull)
+  plan             SaasPlan   @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([panelId])
+  @@map("saas_invoices")
+}
+
+model SaasSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("saas_settings")
+}
+
+model SaasAuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  actor     String   @default("system")
+  action    String
+  target    String?
+  meta      Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("saas_audit_logs")
+}

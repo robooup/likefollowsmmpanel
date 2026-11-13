@@ -1,4 +1,5 @@
-﻿import { auth } from '@/auth';
+import { baseUrlSync } from '@/lib/tenant/url';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -218,10 +219,10 @@ export async function PUT(req: NextRequest) {
 
 async function performSync(syncType: string, profitMargin: number) {
   try {
-    if (!process.env.NEXT_PUBLIC_APP_URL) {
+    if (!baseUrlSync()) {
       throw new Error('NEXT_PUBLIC_APP_URL environment variable is required');
     }
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/providers/sync`, {
+    const response = await fetch(`${baseUrlSync()}/api/admin/providers/sync`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

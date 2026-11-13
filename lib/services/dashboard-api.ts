@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 
 const getBaseUrl = () =>
-  typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_API_URL || '');
+  typeof window !== 'undefined' ? window.location.origin : '';
 
 export const dashboardApi = createApi({
   reducerPath: 'dashboardApi',

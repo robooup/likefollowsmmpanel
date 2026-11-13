@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import { db } from '@/lib/db';
 
 async function getOneSignalConfig() {
@@ -27,7 +28,7 @@ export async function sendOneSignalPush(
 
     if (userIds.length === 0) return;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    const appUrl = baseUrlSync() || baseUrlSync() || '';
     const fullUrl = url && appUrl ? `${appUrl.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}` : undefined;
 
     const externalUserIds = userIds.map((id) => String(id));

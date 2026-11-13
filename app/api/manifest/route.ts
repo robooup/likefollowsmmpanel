@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import { NextRequest, NextResponse } from 'next/server';
 import { getGeneralSettings } from '@/lib/utils/general-settings';
 import { getAppName } from '@/lib/utils/general-settings';
@@ -12,7 +13,7 @@ export async function GET(request: NextRequest) {
     const iconPath = generalSettings.siteIcon && generalSettings.siteIcon.trim() !== '' 
       ? generalSettings.siteIcon 
       : '';
-    const siteUrl = generalSettings.siteUrl || process.env.NEXT_PUBLIC_APP_URL;
+    const siteUrl = generalSettings.siteUrl || baseUrlSync();
 
     const manifest = {
       id: '/',

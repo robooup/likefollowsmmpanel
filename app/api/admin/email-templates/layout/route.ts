@@ -1,3 +1,4 @@
+import { baseUrlSync } from '@/lib/tenant/url';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { getEmailLayoutDataFromSettings } from '@/lib/email-templates/get-email-layout-data';
@@ -18,7 +19,7 @@ export async function GET() {
     const headerHtml = emailHeader(layoutData);
     const footerHtml = emailFooter(layoutData);
 
-    const appUrl = layoutData.appUrl || process.env.NEXT_PUBLIC_APP_URL || '';
+    const appUrl = layoutData.appUrl || baseUrlSync() || '';
     let previewVariableContext: {
       sitename: string;
       site_url: string;

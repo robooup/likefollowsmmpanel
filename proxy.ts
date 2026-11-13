@@ -1,6 +1,10 @@
 import authConfig from '@/auth.config';
 import NextAuth from 'next-auth';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { isInternalHost, isPlatformHost } from './lib/tenant/config';
+import { getTenantStore, normalizeHost, tenancy } from './lib/tenant/context';
+import { isTenantServing, resolveHost } from './lib/tenant/registry';
+import { SAAS_SESSION_COOKIE, verifySaasSession } from './lib/saas/session';
 import { getClientIP } from './lib/activity-logger';
 import {
     apiAuthPrefixes,
@@ -19,7 +23,7 @@ const isAdminOrModerator = (role: string | undefined | null): boolean => {
   return role === 'admin' || role === 'moderator';
 };
 
-export default auth(async (req) => {
+const panelProxy = auth(async (req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
   const userRole = req?.auth?.user;
@@ -233,50 +237,15 @@ export default auth(async (req) => {
         },
       });
     }
-
-    console.log('Proxy: Contact page detected:', nextUrl.pathname);
-    console.log('Proxy: User role:', userRole?.role);
     try {
-
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
-      
-      if (!baseUrl) {
-        console.error('NEXT_PUBLIC_APP_URL or NEXTAUTH_URL environment variable is required');
-        return NextResponse.next({
-          request: {
-            headers: requestHeaders,
-          },
-        });
-      }
-      console.log('Proxy: Fetching contact status from:', `${baseUrl}/api/contact-system-status`);
-      const response = await fetch(`${baseUrl}/api/contact-system-status`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('Proxy: API response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Proxy: Contact system enabled:', data.contactSystemEnabled);
-        if (!data.contactSystemEnabled) {
-
-          const redirectPath = isAdmin ? '/admin' : '/dashboard';
-          console.log('Proxy: Redirecting to:', redirectPath);
-          return NextResponse.redirect(new URL(redirectPath, nextUrl));
-        }
-      } else {
-        console.log('Proxy: API error, redirecting to safe page');
-
-        const redirectPath = isAdmin ? '/admin' : '/dashboard';
-        return NextResponse.redirect(new URL(redirectPath, nextUrl));
+      const { contactDB } = await import('@/lib/contact-db');
+      const contactSettings = await contactDB.getContactSettings();
+      if (!(contactSettings?.contactSystemEnabled ?? false)) {
+        return NextResponse.redirect(new URL(isAdmin ? '/admin' : '/dashboard', nextUrl));
       }
     } catch (error) {
       console.error('Error checking contact system status in proxy:', error);
-
-      const redirectPath = isAdmin ? '/admin' : '/dashboard';
-      return NextResponse.redirect(new URL(redirectPath, nextUrl));
+      return NextResponse.redirect(new URL(isAdmin ? '/admin' : '/dashboard', nextUrl));
     }
   }
 
@@ -441,6 +410,107 @@ export default auth(async (req) => {
     },
   });
 });
+
+const SAAS_PAGE_PREFIX = '/saas';
+const SAAS_API_PREFIX = '/api/saas';
+
+function isUnder(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(prefix + '/');
+}
+
+function notFound(isApi: boolean): NextResponse {
+  return isApi
+    ? NextResponse.json({ error: 'Not found' }, { status: 404 })
+    : new NextResponse('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+}
+
+/** topupcraft.com itself: marketing site, customer portal, super admin. */
+async function platformProxy(req: NextRequest): Promise<NextResponse> {
+  const { nextUrl } = req;
+  const pathname = nextUrl.pathname;
+
+  if (isUnder(pathname, '/api')) {
+    // Only the SaaS API exists on the platform host; panel APIs do not.
+    return isUnder(pathname, SAAS_API_PREFIX) && !isUnder(pathname, `${SAAS_API_PREFIX}/internal`)
+      ? NextResponse.next()
+      : notFound(true);
+  }
+
+  if (isUnder(pathname, SAAS_PAGE_PREFIX)) {
+    const clean = new URL(pathname.slice(SAAS_PAGE_PREFIX.length) || '/', nextUrl);
+    clean.search = nextUrl.search;
+    return NextResponse.redirect(clean, 308);
+  }
+
+  const needsLogin = isUnder(pathname, '/portal') || isUnder(pathname, '/admin');
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+  if (needsLogin || isAuthPage) {
+    const session = await verifySaasSession(req.cookies.get(SAAS_SESSION_COOKIE)?.value);
+    if (needsLogin && !session) {
+      const login = new URL('/login', nextUrl);
+      login.searchParams.set('next', pathname);
+      return NextResponse.redirect(login);
+    }
+    if (isUnder(pathname, '/admin') && session?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/portal', nextUrl));
+    }
+    if (isAuthPage && session) {
+      return NextResponse.redirect(new URL(session.role === 'admin' ? '/admin' : '/portal', nextUrl));
+    }
+  }
+
+  const target = new URL(`${SAAS_PAGE_PREFIX}${pathname === '/' ? '' : pathname}`, nextUrl);
+  target.search = nextUrl.search;
+  return NextResponse.rewrite(target);
+}
+
+export default async function proxy(req: NextRequest, event: NextFetchEvent) {
+  const rawHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(',')[0].trim().toLowerCase();
+  const host = normalizeHost(rawHost);
+  const pathname = req.nextUrl.pathname;
+  const isApi = isUnder(pathname, '/api');
+
+  // Loopback: only Caddy's on-demand-TLS check and the cron runner live here.
+  if (isInternalHost(host) && !isPlatformHost(host)) {
+    return isUnder(pathname, `${SAAS_API_PREFIX}/internal`) ? NextResponse.next() : notFound(isApi);
+  }
+
+  if (isPlatformHost(host)) return platformProxy(req);
+
+  // Everything else is a customer panel, identified by its domain.
+  if (isUnder(pathname, SAAS_PAGE_PREFIX) || isUnder(pathname, SAAS_API_PREFIX)) return notFound(isApi);
+
+  let tenant;
+  try {
+    tenant = await resolveHost(host);
+  } catch (error) {
+    console.error('Panel lookup failed:', error);
+    return isApi
+      ? NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 })
+      : new NextResponse('Service temporarily unavailable', { status: 503 });
+  }
+
+  if (!tenant || !isTenantServing(tenant)) {
+    if (isApi) {
+      return NextResponse.json(
+        { error: tenant ? 'This panel is currently unavailable' : 'No panel is configured for this domain' },
+        { status: tenant ? 503 : 404 }
+      );
+    }
+    const target = new URL(`${SAAS_PAGE_PREFIX}/panel-status`, req.nextUrl);
+    target.search = `?state=${tenant ? encodeURIComponent(tenant.status) : 'unknown'}`;
+    return NextResponse.rewrite(target, { status: tenant ? 503 : 404 });
+  }
+
+  const run = () => (panelProxy as any)(req, event);
+  const store = getTenantStore();
+  if (store && store.host === host) {
+    store.tenantId = tenant.id;
+    return run();
+  }
+  const proto = (req.headers.get('x-forwarded-proto') || 'http').split(',')[0].trim() === 'https' ? 'https' : 'http';
+  return tenancy.als.run({ host, proto, origin: `${proto}://${rawHost}`, tenantId: tenant.id }, run);
+}
 
 export const config = {
   matcher: [

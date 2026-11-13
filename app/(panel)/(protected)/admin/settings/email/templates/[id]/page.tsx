@@ -1,5 +1,6 @@
 'use client';
 
+import { baseUrlSync } from '@/lib/tenant/url';
 import { useAppNameWithFallback } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -21,7 +22,7 @@ const PAYMENT_TEMPLATE_KEYS = ['transaction_payment_success', 'transaction_payme
 
 const FALLBACK_PREVIEW_CONTEXT: EmailTemplateContext = {
   sitename: 'My SMM Panel',
-  site_url: process.env.NEXT_PUBLIC_APP_URL || 'https://example.com',
+  site_url: baseUrlSync() || 'https://example.com',
   username: 'johndoe',
   user_full_name: 'John Doe',
   user_email: 'user@example.com',

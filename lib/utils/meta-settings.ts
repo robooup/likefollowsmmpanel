@@ -1,5 +1,5 @@
-import { unstable_cache, revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
+import { createTenantCache } from '@/lib/tenant/key';
 
 export const META_SETTINGS_CACHE_TAG = 'meta-settings';
 
@@ -11,9 +11,8 @@ export interface MetaSettings {
   thumbnail: string;
 }
 
-let cachedMetaSettings: MetaSettings | null = null;
-let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
+const metaCache = createTenantCache<MetaSettings>(CACHE_DURATION);
 
 const DEFAULT_META_SETTINGS: MetaSettings = {
   googleTitle: '',
@@ -47,27 +46,16 @@ async function fetchMetaSettingsFromDb(): Promise<MetaSettings> {
   return DEFAULT_META_SETTINGS;
 }
 
-const getCachedMetaSettings = unstable_cache(
-  fetchMetaSettingsFromDb,
-  [META_SETTINGS_CACHE_TAG],
-  { revalidate: 300, tags: [META_SETTINGS_CACHE_TAG] }
-);
-
 export async function getMetaSettings(): Promise<MetaSettings> {
-  const now = Date.now();
-  if (cachedMetaSettings && (now - lastFetchTime) < CACHE_DURATION) {
-    return cachedMetaSettings;
-  }
-  const metaSettings = await getCachedMetaSettings();
-  cachedMetaSettings = metaSettings;
-  lastFetchTime = now;
+  const cached = metaCache.get();
+  if (cached) return cached;
+  const metaSettings = await fetchMetaSettingsFromDb();
+  metaCache.set(metaSettings);
   return metaSettings;
 }
 
 export function clearMetaSettingsCache(): void {
-  cachedMetaSettings = null;
-  lastFetchTime = 0;
-  revalidateTag(META_SETTINGS_CACHE_TAG, 'max');
+  metaCache.clear();
 }
 
 export function formatKeywords(keywords: string): string[] {

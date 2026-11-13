@@ -1,3 +1,5 @@
+import { baseUrlSync } from '@/lib/tenant/url';
+import { createTenantCache } from '@/lib/tenant/key';
 
 export interface GeneralSettings {
   siteTitle: string;
@@ -16,9 +18,8 @@ export interface GeneralSettings {
   footerText: string;
 }
 
-let cachedSettings: GeneralSettings | null = null;
-let lastFetchTime = 0;
 const CACHE_DURATION = 5 * 60 * 1000;
+const settingsCache = createTenantCache<GeneralSettings>(CACHE_DURATION);
 
 const MINIMAL_FALLBACK: GeneralSettings = {
   siteTitle: '',
@@ -29,7 +30,7 @@ const MINIMAL_FALLBACK: GeneralSettings = {
   siteDarkLogo: '',
   adminEmail: process.env.ADMIN_EMAIL || 'admin@example.com',
   supportEmail: '',
-  siteUrl: process.env.NEXT_PUBLIC_APP_URL || '',
+  siteUrl: '',
   metaKeywords: 'SMM, Social Media Marketing, Panel',
   metaSiteTitle: '',
   googleTitle: '',
@@ -38,11 +39,9 @@ const MINIMAL_FALLBACK: GeneralSettings = {
 };
 
 export async function getGeneralSettings(): Promise<GeneralSettings> {
-  const now = Date.now();
-
-  if (cachedSettings && (now - lastFetchTime) < CACHE_DURATION) {
-    return cachedSettings;
-  }
+  const cached = settingsCache.get();
+  if (cached) return cached;
+  let cachedSettings: GeneralSettings;
 
   try {
 
@@ -101,14 +100,14 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
           siteDarkLogo: generalData.siteDarkLogo || MINIMAL_FALLBACK.siteDarkLogo,
           adminEmail: generalData.adminEmail || MINIMAL_FALLBACK.adminEmail,
           supportEmail: generalData.supportEmail || '',
-          siteUrl: MINIMAL_FALLBACK.siteUrl,
+          siteUrl: baseUrlSync(),
           metaKeywords: metaKeywords,
           metaSiteTitle: metaData?.siteTitle || generalData.siteTitle || '',
           googleTitle: googleTitle,
           thumbnail: metaData?.thumbnail || MINIMAL_FALLBACK.thumbnail,
           footerText: MINIMAL_FALLBACK.footerText
         };
-        lastFetchTime = now;
+        settingsCache.set(cachedSettings);
         return cachedSettings;
       }
     } else {
@@ -137,14 +136,14 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
           siteDarkLogo: settings.siteDarkLogo || MINIMAL_FALLBACK.siteDarkLogo,
           adminEmail: settings.adminEmail || MINIMAL_FALLBACK.adminEmail,
           supportEmail: settings.supportEmail || '',
-          siteUrl: MINIMAL_FALLBACK.siteUrl,
+          siteUrl: baseUrlSync(),
           metaKeywords: metaKeywords,
           metaSiteTitle: settings.metaSiteTitle || settings.siteTitle || '',
           googleTitle: googleTitle,
           thumbnail: settings.thumbnail || MINIMAL_FALLBACK.thumbnail,
           footerText: MINIMAL_FALLBACK.footerText
         };
-        lastFetchTime = now;
+        settingsCache.set(cachedSettings);
         return cachedSettings;
       }
     }
@@ -153,7 +152,7 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
   }
 
   cachedSettings = { ...MINIMAL_FALLBACK };
-  lastFetchTime = now;
+  settingsCache.set(cachedSettings);
   return cachedSettings;
 }
 
@@ -235,7 +234,7 @@ export function formatWhatsAppLink(phoneNumber: string): string {
 }
 
 export function getGeneralSettingsSync(): GeneralSettings {
-  return cachedSettings || { ...MINIMAL_FALLBACK };
+  return settingsCache.peek() || { ...MINIMAL_FALLBACK };
 }
 
 export function getAppNameSync(): string {
@@ -279,8 +278,7 @@ export function getFooterTextSync(): string {
 }
 
 export function clearGeneralSettingsCache(): void {
-  cachedSettings = null;
-  lastFetchTime = 0;
+  settingsCache.clear();
 }
 
 export function clearAppNameCache(): void {
