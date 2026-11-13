@@ -70,6 +70,13 @@ const toString = (value: number | bigint | string | null | undefined): string =>
 
 // State, data loading and submission for the New order form. Shared by every
 // user theme so each theme only supplies its own markup.
+const NEW_ORDER_PLATFORM_EVENT = 'tc:new-order-platform';
+
+/** Filters the New order form to one platform (null = all). Used by the platform shortcuts of every theme. */
+export function setNewOrderPlatform(keyword: string | null) {
+  window.dispatchEvent(new CustomEvent(NEW_ORDER_PLATFORM_EVENT, { detail: keyword }));
+}
+
 export function useNewOrderForm() {
   const user = useCurrentUser();
   const router = useRouter();
@@ -80,7 +87,14 @@ export function useNewOrderForm() {
   const serviceIdFromUrl =
     searchParams?.get('sId') || searchParams?.get('serviceId');
   const categoryIdFromUrl = searchParams?.get('categoryId');
-  const platformFromUrl = searchParams?.get('platform');
+  // The platform filter lives in state (seeded from ?platform= on load) so a
+  // chip click filters instantly; see setNewOrderPlatform below.
+  const [platformFromUrl, setPlatformFromUrl] = useState<string | null>(searchParams?.get('platform') ?? null);
+  useEffect(() => {
+    const onPlatform = (event: Event) => setPlatformFromUrl((event as CustomEvent<string | null>).detail ?? null);
+    window.addEventListener(NEW_ORDER_PLATFORM_EVENT, onPlatform);
+    return () => window.removeEventListener(NEW_ORDER_PLATFORM_EVENT, onPlatform);
+  }, []);
   const [servicesData, setServicesData] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -322,6 +336,11 @@ export function useNewOrderForm() {
             } else if (!selectedCategory) {
               setSelectedCategory(combined[0].id);
             }
+          }
+          if (combined.length === 0 && selectedCategory) {
+            // Nothing on this platform: do not keep a category from another one selected.
+            setSelectedCategory('');
+            setSelectedService('');
           }
         }
       });

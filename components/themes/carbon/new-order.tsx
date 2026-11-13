@@ -22,7 +22,7 @@ import { setPageTitle } from '@/lib/utils/set-page-title';
 import { ServiceTypeFields } from '@/components/service-type-fields';
 import { PriceDisplay } from '@/components/price-display';
 import { convertCurrency, formatCurrencyAmount } from '@/lib/currency-utils';
-import { useNewOrderForm } from '@/components/new-order/use-new-order-form';
+import { useNewOrderForm, setNewOrderPlatform } from '@/components/new-order/use-new-order-form';
 
 // `keyword` is matched against category names by the shared form logic (?platform=).
 const PLATFORMS = [
@@ -57,7 +57,6 @@ export default function CarbonNewOrder() {
   const { appName } = useAppNameWithFallback();
   const form = useNewOrderForm();
   const {
-    router,
     platformFromUrl,
     toastMessage,
     setToastMessage,
@@ -101,16 +100,16 @@ export default function CarbonNewOrder() {
     setPageTitle('New Order', appName);
   }, [appName]);
 
-  const selected: any =
-    form.selected ||
-    servicesData?.find((s: any) => String(s.id) === String(selectedService)) ||
-    null;
+  const activePlatform = platformFromUrl && platformFromUrl !== 'Everything' ? platformFromUrl : null;
+  const noneOnPlatform = !!activePlatform && categoriesWithServices.length === 0;
+  const selected: any = noneOnPlatform
+    ? null
+    : form.selected || servicesData?.find((s: any) => String(s.id) === String(selectedService)) || null;
   const min = toNumber(selected?.min_order);
   const max = toNumber(selected?.max_order) || 999999;
   const tooFew = qty > 0 && qty < min;
   const tooMany = qty > max;
   const usernameLink = selected?.orderLink === 'username';
-  const activePlatform = platformFromUrl && platformFromUrl !== 'Everything' ? platformFromUrl : null;
 
   const money = (usd: number) =>
     currentCurrencyData && currencySettings && availableCurrencies
@@ -126,6 +125,16 @@ export default function CarbonNewOrder() {
     currentCurrencyData && currencySettings && availableCurrencies
       ? money(baseUsdPrice)
       : `${currentCurrencyData?.symbol || '$'}${totalPrice.toFixed(currency === 'USD' ? 4 : 2)}`;
+
+  // Fills the link from the clipboard; browsers ask the user for permission first.
+  const pasteLink = async () => {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (text) setLink(text);
+    } catch {
+      document.getElementById('cb-link')?.focus();
+    }
+  };
 
   const submitLabel = isSubmitting
     ? 'Creating order…'
@@ -163,7 +172,7 @@ export default function CarbonNewOrder() {
                 key={name}
                 type="button"
                 className={`cb-chip ${active ? 'is-active' : ''}`}
-                onClick={() => router.push(keyword ? `/new-order?platform=${keyword}` : '/new-order')}
+                onClick={() => setNewOrderPlatform(keyword)}
               >
                 <Icon className="cb-chip-icon" />
                 <span>{name}</span>
@@ -219,6 +228,15 @@ export default function CarbonNewOrder() {
               )}
             </div>
 
+            {noneOnPlatform && (
+              <div className="cb-alert is-info">
+                {activePlatform === 'Others'
+                  ? 'There are no other services yet.'
+                  : `There are no ${activePlatform} services yet.`}{' '}
+                Choose another platform or pick All.
+              </div>
+            )}
+
             <div className="cb-field">
               <label className="cb-label" htmlFor="cb-category">
                 Category
@@ -233,7 +251,7 @@ export default function CarbonNewOrder() {
                 }}
               >
                 <option value="" disabled>
-                  Select a category
+                  {noneOnPlatform ? 'No categories' : 'Select a category'}
                 </option>
                 {categoriesWithServices.some((cat: any) => cat.isFavorite) && (
                   <optgroup label="Favorites">
@@ -270,13 +288,13 @@ export default function CarbonNewOrder() {
                   setSelectedService(event.target.value);
                   resetServiceTypeFields();
                 }}
-                disabled={!selectedCategory || services.length === 0}
+                disabled={noneOnPlatform || !selectedCategory || services.length === 0}
                 required
               >
                 <option value="" disabled>
-                  {services.length === 0 ? 'No services available' : 'Select a service'}
+                  {noneOnPlatform || services.length === 0 ? 'No services available' : 'Select a service'}
                 </option>
-                {services.map((service: any) => {
+                {(noneOnPlatform ? [] : services).map((service: any) => {
                   const rate = Number(service.rate) || 0;
                   const discounted = servicesDiscount <= 0 ? rate : rate * (1 - servicesDiscount / 100);
                   return (
@@ -304,16 +322,20 @@ export default function CarbonNewOrder() {
               <label className="cb-label" htmlFor="cb-link">
                 {usernameLink ? 'Username' : 'Link'}
               </label>
-              <input
-                id="cb-link"
-                className="cb-input"
-                type={usernameLink ? 'text' : 'url'}
-                placeholder={usernameLink ? 'Enter username' : 'https://'}
-                pattern={usernameLink ? undefined : 'https?://.+'}
-                required
-                value={link}
-                onChange={(event) => setLink(event.target.value)}
-              />
+              <div className="cb-paste">
+                <input
+                  id="cb-link"
+                  className="cb-input"
+                  type={usernameLink ? 'text' : 'url'}
+                  pattern={usernameLink ? undefined : 'https?://.+'}
+                  required
+                  value={link}
+                  onChange={(event) => setLink(event.target.value)}
+                />
+                <button type="button" className="cb-paste-btn" onClick={pasteLink}>
+                  Paste
+                </button>
+              </div>
             </div>
 
             <div className="cb-field">
@@ -360,7 +382,7 @@ export default function CarbonNewOrder() {
             <button
               type="submit"
               className="cb-btn"
-              disabled={isSubmitting || !selectedService || !link || qty < 1 || tooFew || tooMany}
+              disabled={isSubmitting || noneOnPlatform || !selectedService || !link || qty < 1 || tooFew || tooMany}
             >
               {submitLabel}
             </button>

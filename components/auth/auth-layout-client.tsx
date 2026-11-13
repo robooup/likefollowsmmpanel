@@ -4,6 +4,8 @@ import Footer from '@/components/frontend/footer';
 import Header from '@/components/frontend/header';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useUserTheme } from '@/contexts/user-theme-context';
+import CarbonPublicShell from '@/components/themes/carbon/public-shell';
 
 interface AuthLayoutClientProps {
   children: React.ReactNode;
@@ -46,6 +48,11 @@ export default function AuthLayoutClient({ children }: AuthLayoutClientProps) {
   }, []);
 
   const showHeaderFooter = !(isSignInPage && maintenanceMode === 'active');
+  const userTheme = useUserTheme();
+
+  if (userTheme === 'carbon') {
+    return <CarbonPublicShell>{children}</CarbonPublicShell>;
+  }
 
   return (
     <>

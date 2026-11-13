@@ -1,6 +1,7 @@
 import { baseUrlSync } from '@/lib/tenant/url';
 import dynamic from 'next/dynamic';
 import { Metadata } from 'next';
+import { HomeContent } from '@/components/themes/public-chrome';
 import { getMetaSettings, getDisplayTitle, getOpenGraphImageUrl } from '@/lib/utils/meta-settings';
 
 const Hero = dynamic(() => import('@/components/frontend/homepage/hero'));
@@ -52,6 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function HomePage() {
   return (
+    <HomeContent>
     <main>
       <Hero />
       <Statistics />
@@ -62,5 +64,6 @@ export default function HomePage() {
       <Testimonials />
       <FAQs />
     </main>
+    </HomeContent>
   );
 }

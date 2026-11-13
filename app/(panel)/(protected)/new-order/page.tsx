@@ -46,7 +46,7 @@ import {
     FaYoutube
 } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNewOrderForm } from '@/components/new-order/use-new-order-form';
+import { useNewOrderForm, setNewOrderPlatform } from '@/components/new-order/use-new-order-form';
 import { useUserTheme } from '@/contexts/user-theme-context';
 import CarbonNewOrder from '@/components/themes/carbon/new-order';
 
@@ -971,11 +971,7 @@ export default function NewOrderPage() {
   ];
 
   const handleCategoryClick = (categoryKeyword: string | null) => {
-    if (categoryKeyword) {
-      router.push(`/new-order?platform=${categoryKeyword}`);
-    } else {
-      router.push('/new-order');
-    }
+    setNewOrderPlatform(categoryKeyword);
   };
 
   return (
