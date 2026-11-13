@@ -66,7 +66,30 @@ app.prepare().then(() => {
       .toLowerCase();
     const host = normalizeHost(rawHost);
     const proto = String(req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim() === 'https' ? 'https' : 'http';
-    als.run({ host, proto, origin: rawHost ? `${proto}://${rawHost}` : '' }, () => handle(req, res));
+    const origin = rawHost ? `${proto}://${rawHost}` : '';
+    // Next.js builds redirect URLs from its own listening port, so behind the
+    // reverse proxy a redirect would point at https://domain:3000/... Rewrite
+    // such Location headers back to the public origin before they are sent.
+    if (origin) {
+      const writeHead = res.writeHead;
+      res.writeHead = function (...args) {
+        const fix = (value) => {
+          if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return value;
+          try {
+            const url = new URL(value);
+            const sameHost = normalizeHost(url.hostname) === host || url.hostname === 'localhost';
+            if (sameHost && url.port === String(port)) return origin + url.pathname + url.search + url.hash;
+          } catch {}
+          return value;
+        };
+        const current = res.getHeader('location');
+        if (current) res.setHeader('location', fix(current));
+        const headers = args.find((arg) => arg && typeof arg === 'object' && !Array.isArray(arg));
+        if (headers) for (const key of Object.keys(headers)) if (key.toLowerCase() === 'location') headers[key] = fix(headers[key]);
+        return writeHead.apply(this, args);
+      };
+    }
+    als.run({ host, proto, origin }, () => handle(req, res));
   });
 
   server.on('error', (error) => {

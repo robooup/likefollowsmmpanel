@@ -57,12 +57,14 @@ if ! command -v caddy >/dev/null; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
   apt-get update -qq && apt-get install -y -qq caddy >/dev/null
 fi
-if ! caddy list-modules 2>/dev/null | grep -q 'dns.providers.cloudflare'; then
+# grep -q closes the pipe early, which fails under pipefail; match on captured output instead.
+has_cf_module() { local mods; mods=$("$1" list-modules 2>/dev/null) || return 1; [[ $mods == *dns.providers.cloudflare* ]]; }
+if ! has_cf_module caddy; then
   echo "==> Installing Caddy build with the Cloudflare DNS module"
   ARCH=$(dpkg --print-architecture)
   curl -fsSL "https://caddyserver.com/api/download?os=linux&arch=${ARCH}&p=github.com%2Fcaddy-dns%2Fcloudflare" -o /usr/bin/caddy.custom
   chmod +x /usr/bin/caddy.custom
-  /usr/bin/caddy.custom list-modules | grep -q 'dns.providers.cloudflare'
+  has_cf_module /usr/bin/caddy.custom || { echo "Downloaded Caddy build lacks the Cloudflare DNS module."; exit 1; }
   dpkg-divert --divert /usr/bin/caddy.default --rename /usr/bin/caddy 2>/dev/null || true
   mv /usr/bin/caddy.custom /usr/bin/caddy
 fi
@@ -110,7 +112,9 @@ echo "==> Creating database tables"
 run npm run -s saas:migrate
 run npm run -s db:seed
 echo "==> Building the app (5-15 minutes on a 1 GB server)"
-run env NODE_OPTIONS=--max-old-space-size=1536 npx next build
+SKIP_TYPECHECK=0
+[ "$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)" -lt 1900 ] && SKIP_TYPECHECK=1 && echo "    Small server: skipping the build-time type check"
+run env NODE_OPTIONS=--max-old-space-size=1536 SKIP_TYPECHECK=$SKIP_TYPECHECK npx next build
 
 echo "==> Service"
 cp "$APP/deploy/topupcraft.service" /etc/systemd/system/topupcraft.service

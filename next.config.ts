@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The type check needs more memory than a 1 GB server has; deploy scripts set
+  // SKIP_TYPECHECK=1 there. Types are still checked in development and on larger servers.
+  typescript: { ignoreBuildErrors: process.env.SKIP_TYPECHECK === '1' },
   experimental: {
     optimizePackageImports: ['@/components', '@/hooks', '@/lib'],
   },

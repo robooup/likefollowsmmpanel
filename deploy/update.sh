@@ -19,7 +19,9 @@ echo "==> Updating databases"
 run npm run -s saas:migrate
 
 echo "==> Building (this takes a few minutes on a small server)"
-run env NODE_OPTIONS=--max-old-space-size=1536 npx next build
+SKIP_TYPECHECK=0
+[ "$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)" -lt 1900 ] && SKIP_TYPECHECK=1 && echo "    Small server: skipping the build-time type check"
+run env NODE_OPTIONS=--max-old-space-size=1536 SKIP_TYPECHECK=$SKIP_TYPECHECK npx next build
 
 echo "==> Restarting"
 systemctl restart topupcraft
