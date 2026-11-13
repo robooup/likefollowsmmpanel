@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { floatMenu } from '@/lib/utils/float-menu';
 import {
   FaEllipsisH,
   FaExclamationCircle,
@@ -101,7 +102,10 @@ const MoreActionMenu: React.FC<MoreActionMenuProps> = ({
       </button>
       {isOpen && (
         <div
-          ref={menuRef}
+          ref={(el) => {
+            menuRef.current = el;
+            floatMenu(el);
+          }}
           className="absolute right-0 top-8 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
         >
           <div className="py-1">

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { floatMenu } from '@/lib/utils/float-menu';
 import {
   FaCheckCircle,
   FaEdit,
@@ -55,7 +56,7 @@ const MoreActionMenu: React.FC<MoreActionMenuProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[160px]">
+        <div ref={floatMenu} className="absolute right-0 top-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-10 min-w-[160px]">
           <button
             className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 flex items-center gap-2 text-gray-900 dark:text-gray-300"
             onClick={() => {

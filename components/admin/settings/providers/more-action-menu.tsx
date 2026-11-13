@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import { floatMenu } from '@/lib/utils/float-menu';
 import { FaEdit, FaEllipsisH, FaSync, FaTrash, FaUndo } from 'react-icons/fa';
 
 interface Provider {
@@ -72,7 +73,7 @@ const MoreActionMenu: React.FC<MoreActionMenuProps> = ({
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
+          <div ref={floatMenu} className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
             <div className="py-1">
               {provider.status === 'trash' ? (
                 <>

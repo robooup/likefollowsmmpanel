@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { floatMenu } from '@/lib/utils/float-menu';
 import {
   FaCoins,
   FaEdit,
@@ -112,7 +113,7 @@ const MoreActionMenu: React.FC<MoreActionMenuProps> = ({
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 top-8 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+          <div ref={floatMenu} className="absolute right-0 top-8 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
             <div className="py-1">
               <button
                 onClick={() => {
