@@ -7,8 +7,10 @@ import MobileBottomNav from '@/components/dashboard/mobile-bottom-nav';
 import { AuthGuard } from '@/components/protected/auth-guard';
 import { RouteGuard } from '@/components/admin/route-guard';
 import { useSession } from 'next-auth/react';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useUserTheme } from '@/contexts/user-theme-context';
+import CarbonShell from '@/components/themes/carbon/shell';
 
 interface ProtectedLayoutClientProps {
   children: React.ReactNode;
@@ -21,6 +23,27 @@ export default function ProtectedLayoutClient({ children }: ProtectedLayoutClien
   const isDashboard = pathname === '/dashboard';
   const isAdminPage = pathname?.startsWith('/admin');
   const isAdminDashboard = pathname === '/admin';
+  const userTheme = useUserTheme();
+  const router = useRouter();
+  const carbon = userTheme === 'carbon' && !isAdminPage;
+
+  // Carbon has no separate dashboard: New order is the home screen.
+  useEffect(() => {
+    if (carbon && isDashboard) router.replace('/new-order');
+  }, [carbon, isDashboard, router]);
+
+  // Staff never get a user theme (see the panel root layout), so this branch
+  // only ever renders the user-facing pages.
+  if (carbon) {
+    return (
+      <CarbonShell>
+        <AuthGuard>
+          <Announcements visibility="all_pages" />
+          {isDashboard ? null : children}
+        </AuthGuard>
+      </CarbonShell>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">

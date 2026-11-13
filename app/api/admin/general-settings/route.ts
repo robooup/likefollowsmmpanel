@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { clearGeneralSettingsCache } from '@/lib/utils/general-settings';
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizeUserTheme } from '@/lib/user-theme';
 
 const defaultGeneralSettings = {
   siteTitle: 'SMM Panel',
@@ -57,6 +58,7 @@ export async function GET() {
         siteIcon: settings.siteIcon || '',
         siteLogo: settings.siteLogo || '',
         siteDarkLogo: settings.siteDarkLogo || '',
+        userTheme: normalizeUserTheme((settings as any).userTheme),
         maintenanceMode: (settings as any).maintenanceMode || defaultGeneralSettings.maintenanceMode,
         adminEmail: settings.adminEmail || defaultGeneralSettings.adminEmail,
         supportEmail: settings.supportEmail || '',
@@ -123,6 +125,9 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     };
 
+    if (generalSettings.userTheme !== undefined) {
+      updateData.userTheme = normalizeUserTheme(generalSettings.userTheme);
+    }
     if (generalSettings.supportEmail !== undefined) {
       updateData.supportEmail = generalSettings.supportEmail?.trim() || '';
     }

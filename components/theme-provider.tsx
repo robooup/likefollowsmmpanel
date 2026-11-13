@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { SWRProvider } from './swr-provider';
 
 function ThemeWatcher() {
-  const { theme, systemTheme } = useTheme();
+  const { theme, systemTheme, forcedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ function ThemeWatcher() {
     
     const root = document.documentElement;
     const body = document.body;
-    const currentTheme = theme === 'system' ? systemTheme : theme;
+    const currentTheme = forcedTheme || (theme === 'system' ? systemTheme : theme);
     
     const hadDark = root.classList.contains('dark');
     root.classList.remove('dark');
@@ -40,7 +40,7 @@ function ThemeWatcher() {
         detail: { theme: currentTheme, previousTheme: hadDark ? 'dark' : 'light' } 
       }));
     });
-  }, [theme, systemTheme, mounted]);
+  }, [theme, systemTheme, forcedTheme, mounted]);
 
   return null;
 }

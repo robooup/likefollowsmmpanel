@@ -1,5 +1,6 @@
 import { baseUrlSync } from '@/lib/tenant/url';
 import { createTenantCache } from '@/lib/tenant/key';
+import { normalizeUserTheme, type UserTheme } from '@/lib/user-theme';
 
 export interface GeneralSettings {
   siteTitle: string;
@@ -16,6 +17,7 @@ export interface GeneralSettings {
   googleTitle: string;
   thumbnail: string;
   footerText: string;
+  userTheme: UserTheme;
 }
 
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -35,7 +37,8 @@ const MINIMAL_FALLBACK: GeneralSettings = {
   metaSiteTitle: '',
   googleTitle: '',
   thumbnail: '/general/og-image.jpg',
-  footerText: '© 2025 SMM Panel. All rights reserved.'
+  footerText: '© 2025 SMM Panel. All rights reserved.',
+  userTheme: 'default',
 };
 
 export async function getGeneralSettings(): Promise<GeneralSettings> {
@@ -105,7 +108,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
           metaSiteTitle: metaData?.siteTitle || generalData.siteTitle || '',
           googleTitle: googleTitle,
           thumbnail: metaData?.thumbnail || MINIMAL_FALLBACK.thumbnail,
-          footerText: MINIMAL_FALLBACK.footerText
+          footerText: MINIMAL_FALLBACK.footerText,
+          userTheme: normalizeUserTheme(generalData.userTheme),
         };
         settingsCache.set(cachedSettings);
         return cachedSettings;
@@ -141,7 +145,8 @@ export async function getGeneralSettings(): Promise<GeneralSettings> {
           metaSiteTitle: settings.metaSiteTitle || settings.siteTitle || '',
           googleTitle: googleTitle,
           thumbnail: settings.thumbnail || MINIMAL_FALLBACK.thumbnail,
-          footerText: MINIMAL_FALLBACK.footerText
+          footerText: MINIMAL_FALLBACK.footerText,
+          userTheme: normalizeUserTheme((settings as any).userTheme),
         };
         settingsCache.set(cachedSettings);
         return cachedSettings;

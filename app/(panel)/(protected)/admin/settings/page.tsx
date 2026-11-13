@@ -1,5 +1,6 @@
 'use client';
 
+import { USER_THEMES } from '@/lib/user-theme';
 import dynamic from 'next/dynamic';
 import { useCurrentUser } from '@/hooks/use-current-user';
 import { useAppNameWithFallback, updateGlobalAppName } from '@/contexts/app-name-context';
@@ -274,6 +275,7 @@ interface GeneralSettings {
   siteLogo: string;
   siteDarkLogo: string;
   maintenanceMode: 'inactive' | 'active';
+  userTheme?: string;
   adminEmail: string;
   supportEmail: string;
   whatsappSupport: string;
@@ -552,6 +554,7 @@ const GeneralSettingsPage = () => {
       siteLogo: 'Site Logo',
       siteDarkLogo: 'Site Dark Logo',
       maintenanceMode: 'Maintenance Mode',
+      userTheme: 'User Theme',
       adminEmail: 'Administration Email Address',
       supportEmail: 'Support Email Address',
       whatsappSupport: 'WhatsApp Number',
@@ -1066,6 +1069,26 @@ const GeneralSettingsPage = () => {
                     <option value="inactive">Inactive</option>
                     <option value="active">Active</option>
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">User Theme</label>
+                  <select
+                    value={generalSettings.userTheme || 'default'}
+                    onChange={(e) => {
+                      setGeneralSettings(prev => ({ ...prev, userTheme: e.target.value }));
+                    }}
+                    className="form-field w-full pl-4 pr-10 py-3 bg-white dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)] dark:focus:ring-[var(--secondary)] focus:border-transparent shadow-sm text-gray-900 dark:text-white transition-all duration-200 appearance-none cursor-pointer"
+                  >
+                    {USER_THEMES.map((theme) => (
+                      <option key={theme.id} value={theme.id}>
+                        {theme.name} — {theme.description}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    The look your visitors and users see. The admin area keeps the default look.
+                  </p>
                 </div>
 
                 <div className="form-group">

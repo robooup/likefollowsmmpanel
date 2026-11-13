@@ -880,6 +880,7 @@ model GeneralSettings {
   metaSiteTitle   String   @default("")
   siteDescription String   @default("")
   thumbnail       String   @default("")
+  userTheme       String   @default("default")
 
   @@map("general_settings")
 }

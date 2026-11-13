@@ -10,14 +10,17 @@ import OfflineDetector from '@/components/offline-detector';
 import DatabaseConnectionDetector from '@/components/database-connection-detector';
 import ServiceWorkerRegistration from '@/components/service-worker-registration';
 import { APP_DESCRIPTION } from '@/lib/constants';
-import { getAppName } from '@/lib/utils/general-settings';
+import { getAppName, getGeneralSettings } from '@/lib/utils/general-settings';
+import { UserThemeProvider } from '@/contexts/user-theme-context';
+import type { UserTheme } from '@/lib/user-theme';
+import '@/app/themes/carbon.css';
 import type { Metadata } from 'next';
 import { SessionProvider } from 'next-auth/react';
 
 import { AppNameProvider } from '@/contexts/app-name-context';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { getUserCurrency } from '@/lib/actions/currency';
-import { Nunito } from 'next/font/google';
+import { Inter, Nunito } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 import StoreProvider from '@/app/store-provider';
@@ -29,6 +32,13 @@ const nunito = Nunito({
   subsets: ['latin'],
   variable: '--font-nunito',
   weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+});
+
+// Used by the Carbon user theme.
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -70,9 +80,13 @@ export default async function RootLayout({
   const serverCurrency = await getUserCurrency();
   const appName = await getAppName();
   const faviconHref = `/api/favicon?t=${Date.now()}`;
+  // Staff always get the default look so the admin area is never restyled.
+  const role = session?.user?.role;
+  const isStaff = role === 'admin' || role === 'moderator';
+  const userTheme: UserTheme = isStaff ? 'default' : (await getGeneralSettings()).userTheme;
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-user-theme={userTheme} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/api/manifest" />
         <link rel="icon" href={faviconHref} type="image/png" />
@@ -105,7 +119,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${nunito.variable} font-nunito antialiased text-black`}
+        className={`${nunito.variable} ${inter.variable} font-nunito antialiased text-black`}
         suppressHydrationWarning
       >
         <SessionProvider
@@ -119,6 +133,7 @@ export default async function RootLayout({
             <ThemeProvider
               attribute="class"
               defaultTheme="light"
+              forcedTheme={userTheme === 'carbon' ? 'dark' : undefined}
               enableSystem={false}
               disableTransitionOnChange={false}
             >
@@ -132,6 +147,7 @@ export default async function RootLayout({
                 isAuthenticated={!!session}
               />
               <FaviconUpdater />
+              <UserThemeProvider theme={userTheme}>
               <AppNameProvider initialAppName={appName}>
                 <CurrencyProvider serverCurrency={serverCurrency}>
                   <OfflineDetector>
@@ -144,6 +160,7 @@ export default async function RootLayout({
                   </OfflineDetector>
                 </CurrencyProvider>
               </AppNameProvider>
+              </UserThemeProvider>
             </ThemeProvider>
             </QueryProvider>
           </StoreProvider>
