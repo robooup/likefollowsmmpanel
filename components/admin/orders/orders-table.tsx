@@ -395,9 +395,8 @@ const OrdersTableContent: React.FC<OrdersTableContentProps> = ({
                   className="text-sm font-medium"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {typeof order.startCount === 'number'
-                    ? formatCount(order.startCount)
-                    : '0'}
+                  {/* The API sends big counts as text. */}
+                  {Number.isFinite(Number(order.startCount)) ? formatCount(Number(order.startCount)) : '0'}
                 </div>
               </td>
               <td className="p-3">

@@ -308,6 +308,23 @@ async function handleAddOrder(req: NextRequest, params: Params, user: { id: numb
   return NextResponse.json({ order: order.id });
 }
 
+// Resellers' panels expect the standard SMM status names.
+const API_STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  failed: 'Pending',
+  processing: 'Processing',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  partial: 'Partial',
+  cancelled: 'Canceled',
+  canceled: 'Canceled',
+  refunded: 'Canceled',
+};
+
+function apiStatusLabel(status?: string | null): string {
+  return API_STATUS_LABELS[(status || '').toLowerCase()] || 'Pending';
+}
+
 async function handleOrderStatus(
   params: Params,
   user: { id: number }
@@ -352,7 +369,7 @@ async function handleOrderStatus(
     byId[String(o.id)] = {
       charge: String(o.charge ?? 0),
       start_count: String(o.startCount ?? 0),
-      status: o.status || 'Pending',
+      status: apiStatusLabel(o.status),
       remains: String(o.remains ?? 0),
       currency: o.currency || 'USD',
     };

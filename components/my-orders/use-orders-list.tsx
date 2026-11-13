@@ -747,7 +747,7 @@ export function useOrdersList() {
   const formatStatusDisplay = (status: string) => {
     switch (status) {
       case 'in_progress':
-        return 'In Progress';
+        return 'In progress';
       case 'pending':
         return 'Pending';
       case 'processing':

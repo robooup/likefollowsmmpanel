@@ -27,7 +27,7 @@ const UpdateOrderStatusModal: React.FC<UpdateOrderStatusModalProps> = ({
       const normalizedStatus = currentStatus?.toLowerCase().trim();
       if (isSelfService && (normalizedStatus === 'in_progress' || normalizedStatus === 'inprogress')) {
         setNewStatus('completed');
-      } else if (normalizedStatus === 'pending' || normalizedStatus === 'inprogress' || normalizedStatus === 'processing') {
+      } else if (['pending', 'inprogress', 'in_progress', 'processing'].includes(normalizedStatus)) {
         setNewStatus('completed');
       } else {
         setNewStatus(currentStatus);
