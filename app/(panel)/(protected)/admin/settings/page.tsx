@@ -6,6 +6,8 @@ import { useCurrentUser } from '@/hooks/use-current-user';
 import { useAppNameWithFallback, updateGlobalAppName } from '@/contexts/app-name-context';
 import { setPageTitle } from '@/lib/utils/set-page-title';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { normalizeGeneralSection } from '@/components/admin/settings-tabs';
 
 const MediaAttachModal = dynamic(
   () => import('@/components/media/media-attach-modal'),
@@ -48,20 +50,7 @@ const SettingsCardSkeleton = () => {
 };
 
 const SettingsPageSkeleton = () => {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="space-y-6">
-        <SettingsCardSkeleton />
-        <SettingsCardSkeleton />
-        <SettingsCardSkeleton />
-      </div>
-      <div className="space-y-6">
-        <SettingsCardSkeleton />
-        <SettingsCardSkeleton />
-        <SettingsCardSkeleton />
-      </div>
-    </div>
-  );
+  return <SettingsCardSkeleton />;
 };
 
 const ImageSkeleton = ({ width, height, className = '' }: { width: number; height: number; className?: string }) => (
@@ -333,6 +322,7 @@ interface ModuleSettings {
 
 const GeneralSettingsPage = () => {
   const currentUser = useCurrentUser();
+  const settingsTab = normalizeGeneralSection(useSearchParams()?.get('tab'));
 
   const { appName } = useAppNameWithFallback();
 
@@ -881,9 +871,9 @@ const GeneralSettingsPage = () => {
       </div>
 
       <div className="page-content">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="settings-single">
           <div className="space-y-6">
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'general' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaGlobe />
@@ -1199,7 +1189,7 @@ const GeneralSettingsPage = () => {
                 </button>
               </div>
             </div>
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'seo' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaSearch />
@@ -1284,7 +1274,7 @@ const GeneralSettingsPage = () => {
               </div>
             </div>
 
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'users' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaUsers />
@@ -1494,7 +1484,7 @@ const GeneralSettingsPage = () => {
             </div>
           </div>
           <div className="space-y-6">
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'tickets' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaTicketAlt />
@@ -1584,7 +1574,7 @@ const GeneralSettingsPage = () => {
                 </button>
               </div>
             </div>
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'contact' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaHeadset />
@@ -1674,7 +1664,7 @@ const GeneralSettingsPage = () => {
                 </button>
               </div>
             </div>
-            <div className="card card-padding">
+            <div className="card card-padding" style={{ display: settingsTab === 'modules' ? undefined : 'none' }}>
               <div className="card-header">
                 <div className="card-icon">
                   <FaPuzzlePiece />

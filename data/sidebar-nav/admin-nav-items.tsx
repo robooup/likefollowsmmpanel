@@ -190,10 +190,10 @@ export const adminNavItems = [
   },
 
   {
-    title: 'General Settings',
+    title: 'Settings',
     href: '/admin/settings',
     icon: 'FaCog',
-    label: 'General Settings',
+    label: 'Settings',
     roles: ['admin'],
   },
   {

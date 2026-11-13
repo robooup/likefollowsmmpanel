@@ -2077,3 +2077,102 @@ body {
   text-decoration: underline;
   line-height: inherit;
 }
+
+/* ---------- Admin settings: tabbed sub-navigation ---------- */
+.settings-shell-head {
+  margin-bottom: 1.5rem;
+}
+
+.settings-title {
+  margin: 0 0 1.25rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 2.25rem;
+  letter-spacing: -0.025em;
+  color: #030712;
+}
+
+.dark .settings-title {
+  color: #ffffff !important;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(3, 7, 18, 0.05), 0 1px 2px rgba(0, 0, 0, 0.05);
+  scrollbar-width: thin;
+}
+
+.dark .settings-tabs {
+  background: var(--card-bg, #18181b);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.settings-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5rem;
+  white-space: nowrap;
+  color: #6b7280;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settings-tab svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: #9ca3af;
+}
+
+.settings-tab:hover {
+  background: rgba(3, 7, 18, 0.05);
+  color: #374151;
+}
+
+.dark .settings-tab,
+.dark .settings-tab span {
+  color: #9ca3af !important;
+}
+
+.dark .settings-tab svg {
+  color: #6b7280 !important;
+}
+
+.dark .settings-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-tab.is-active,
+.settings-tab.is-active span,
+.settings-tab.is-active svg,
+.dark .settings-tab.is-active,
+.dark .settings-tab.is-active span,
+.dark .settings-tab.is-active svg {
+  color: var(--primary) !important;
+}
+
+.settings-tab.is-active {
+  background: rgba(3, 7, 18, 0.05);
+}
+
+.dark .settings-tab.is-active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* The scrolling tab row must not widen the page to fit all of its tabs. */
+.settings-tabs {
+  contain: inline-size;
+}
+
+.settings-single .card {
+  margin-top: 0 !important;
+}

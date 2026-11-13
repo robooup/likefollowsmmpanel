@@ -321,20 +321,9 @@ export default function SideBarNav({
           return resellerItems.includes(item.title);
         }),
         media: items.filter((item) => ['Media'].includes(item.title)),
-        settings: items.filter((item) =>
-          [
-            'General Settings',
-            'Providers',
-            'Payment Gateway',
-            'Payment Currency',
-            'Notification Settings',
-            'Integrations',
-            'Custom Codes',
-          ].includes(item.title)
-        ),
-        emailSettings: items.filter((item) =>
-          ['SMTP Configuration', 'Email Templates'].includes(item.title)
-        ),
+        // Every settings page is a tab of the single Settings screen.
+        settings: items.filter((item) => item.title === 'Settings'),
+        emailSettings: [],
         security: items.filter((item) =>
           [
             'Security Settings',
