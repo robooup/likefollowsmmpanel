@@ -1,11 +1,15 @@
+'use client';
+
 import { useRouter } from "next/navigation";
 import { FaExclamationTriangle } from "react-icons/fa";
+import { FormToast } from "@/components/form-toast";
 
 interface FormErrorProps {
   message?: string;
+  inline?: boolean;
 }
 
-export const FormError: React.FC<FormErrorProps> = ({ message }) => {
+export const FormError: React.FC<FormErrorProps> = ({ message, inline }) => {
   const router = useRouter();
 
   if (!message) return null;
@@ -16,10 +20,8 @@ export const FormError: React.FC<FormErrorProps> = ({ message }) => {
   if (match) {
     const [, beforeText, contactText, afterText] = match;
 
-    return (
-      <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive">
-        <FaExclamationTriangle className="w-4 h-4" />
-        <span>
+    const content = (
+      <>
           {beforeText}
           <button
              onClick={() => router.push('/contact')}
@@ -30,10 +32,24 @@ export const FormError: React.FC<FormErrorProps> = ({ message }) => {
              {contactText}
            </button>
           {afterText}
-        </span>
+      </>
+    );
+    if (!inline) {
+      return (
+        <FormToast message={message} type="error">
+          {content}
+        </FormToast>
+      );
+    }
+    return (
+      <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive">
+        <FaExclamationTriangle className="w-4 h-4" />
+        <span>{content}</span>
       </div>
     );
   }
+
+  if (!inline) return <FormToast message={message} type="error" />;
 
   return (
     <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive">

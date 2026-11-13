@@ -12,7 +12,7 @@ interface RoleGateProps {
 export default function RoleGate({ children, allowedRole }: RoleGateProps) {
   const role = useCurrentUserRole();
   if (role !== allowedRole) {
-    return <FormError message="You are not authorized to view this page" />;
+    return <FormError inline message="You are not authorized to view this page" />;
   }
   return <>{children}</>;
 }

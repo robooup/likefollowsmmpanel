@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import ReCAPTCHA from '@/components/recaptcha';
+import { FormError } from '@/components/form-error';
+import { FormSuccess } from '@/components/form-success';
 import { useSignIn } from '@/components/auth/use-sign-in';
 
 /** Sign-in form of the Carbon theme (used on the landing page and on /sign-in). */
@@ -138,8 +140,8 @@ export default function CarbonSignInForm() {
         </>
       )}
 
-      {message ? <div className="cb-alert is-error">{message}</div> : null}
-      {success ? <div className="cb-alert is-success">{success}</div> : null}
+      <FormError message={message || undefined} />
+      <FormSuccess message={success || undefined} />
 
       <button type="submit" className="cb-btn" disabled={isPending}>
         {isPending ? 'Signing in…' : 'Sign in'}
