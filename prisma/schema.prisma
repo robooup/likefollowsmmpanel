@@ -373,9 +373,9 @@ model ContactCategories {
   id                Int               @id @default(autoincrement())
   name              String
   contactSettingsId Int
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  contactSettings   ContactSettings  @relation(fields: [contactSettingsId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  contactSettings   ContactSettings   @relation(fields: [contactSettingsId], references: [id], onDelete: Cascade)
   contactMessages   ContactMessages[]
 
   @@index([contactSettingsId], map: "contact_categories_contactSettingsId_idx")
@@ -383,22 +383,22 @@ model ContactCategories {
 }
 
 model ContactMessages {
-  id             Int               @id @default(autoincrement())
-  userId         Int
-  subject        String
-  message        String            @db.Text
-  status         String            @default("Unread")
-  categoryId     Int
-  attachments    String?           @db.Text
-  adminReply     String?           @db.Text
-  repliedAt      DateTime?
-  repliedBy      Int?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @default(now()) @updatedAt
-  notes          ContactNotes[]
-  user           Users             @relation(fields: [userId], references: [id])
-  category       ContactCategories @relation(fields: [categoryId], references: [id])
-  repliedByUser  Users?             @relation("ContactRepliedBy", fields: [repliedBy], references: [id])
+  id            Int               @id @default(autoincrement())
+  userId        Int
+  subject       String
+  message       String            @db.Text
+  status        String            @default("Unread")
+  categoryId    Int
+  attachments   String?           @db.Text
+  adminReply    String?           @db.Text
+  repliedAt     DateTime?
+  repliedBy     Int?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @default(now()) @updatedAt
+  notes         ContactNotes[]
+  user          Users             @relation(fields: [userId], references: [id])
+  category      ContactCategories @relation(fields: [categoryId], references: [id])
+  repliedByUser Users?            @relation("ContactRepliedBy", fields: [repliedBy], references: [id])
 
   @@index([userId])
   @@index([categoryId])
@@ -623,8 +623,8 @@ model ModuleSettings {
   servicePurchaseEarningCount String   @default("1")
   childPanelSellingEnabled    Boolean  @default(false)
   childPanelPrice             Float    @default(10)
-  childPanelNameserver1       String?  @default("ns1.likefollowsmmpanel.com")
-  childPanelNameserver2       String?  @default("ns2.likefollowsmmpanel.com")
+  childPanelNameserver1       String?  @default("")
+  childPanelNameserver2       String?  @default("")
   serviceUpdateLogsEnabled    Boolean  @default(true)
   massOrderEnabled            Boolean  @default(false)
   servicesListPublic          Boolean  @default(true)
@@ -650,7 +650,6 @@ model ServiceUpdateLogs {
 
   @@map("service_update_logs")
 }
-
 
 model TicketSettings {
   id                  Int              @id @default(autoincrement())
@@ -700,7 +699,7 @@ model Users {
   preferredCurrency                             String                   @default("USD")
   language                                      String                   @default("en")
   timezone                                      String                   @default("Asia/Dhaka")
-  timeFormat                                     String?                 @default("12")
+  timeFormat                                    String?                  @default("12")
   suspendedUntil                                DateTime?
   permissions                                   Json?
   activityLogs                                  ActivityLogs[]
@@ -709,7 +708,7 @@ model Users {
   cancelRequests                                CancelRequests[]
   contactNotes                                  ContactNotes[]
   contactMessages                               ContactMessages[]
-  repliedContactMessages                        ContactMessages[]         @relation("ContactRepliedBy")
+  repliedContactMessages                        ContactMessages[]        @relation("ContactRepliedBy")
   favouriteCat                                  FavoriteCategories[]
   favoriteServices                              FavoriteServices[]
   newOrders                                     NewOrders[]
@@ -851,14 +850,14 @@ model EmailSettings {
 }
 
 model EmailTemplate {
-  id         Int      @id @default(autoincrement())
-  templateKey String  @unique
-  fromName   String?  @db.Text
-  subject    String   @db.Text
-  bodyHtml   String   @db.Text
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  templateKey String   @unique
+  fromName    String?  @db.Text
+  subject     String   @db.Text
+  bodyHtml    String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("email_templates")
 }
@@ -1115,43 +1114,46 @@ model SaasUser {
 }
 
 model SaasPlan {
-  id           Int           @id @default(autoincrement())
-  slug         String        @unique
-  name         String
-  description  String        @default("")
-  priceMonthly Int // whole units of `currency`
-  currency     String        @default("BDT")
-  features     Json          @default("[]")
-  isPopular    Boolean       @default(false)
-  isActive     Boolean       @default(true)
-  sortOrder    Int           @default(0)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  panels       SaasPanel[]
-  invoices     SaasInvoice[]
+  id               Int           @id @default(autoincrement())
+  slug             String        @unique
+  name             String
+  description      String        @default("")
+  priceMonthly     Int // whole units of `currency`
+  currency         String        @default("BDT")
+  features         Json          @default("[]")
+  maxCustomDomains Int           @default(1)
+  isPopular        Boolean       @default(false)
+  isActive         Boolean       @default(true)
+  sortOrder        Int           @default(0)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  panels           SaasPanel[]
+  invoices         SaasInvoice[]
 
   @@map("saas_plans")
 }
 
 model SaasPanel {
-  id            Int               @id @default(autoincrement())
-  ownerId       Int
-  planId        Int
-  name          String
+  id                Int               @id @default(autoincrement())
+  ownerId           Int
+  planId            Int
+  name              String
   // pending_payment | provisioning | active | suspended | expired | terminated | failed
-  status        String            @default("pending_payment")
-  statusReason  String?
-  dbName        String?           @unique
-  adminEmail    String
-  adminUsername String
-  expiresAt     DateTime?
-  provisionedAt DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  owner         SaasUser          @relation(fields: [ownerId], references: [id])
-  plan          SaasPlan          @relation(fields: [planId], references: [id])
-  domains       SaasPanelDomain[]
-  invoices      SaasInvoice[]
+  status            String            @default("pending_payment")
+  statusReason      String?
+  dbName            String?           @unique
+  adminEmail        String
+  adminUsername     String
+  // bcrypt hash of the first admin password; cleared once the panel is created
+  adminPasswordHash String?
+  expiresAt         DateTime?
+  provisionedAt     DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  owner             SaasUser          @relation(fields: [ownerId], references: [id])
+  plan              SaasPlan          @relation(fields: [planId], references: [id])
+  domains           SaasPanelDomain[]
+  invoices          SaasInvoice[]
 
   @@index([ownerId])
   @@index([status, expiresAt])

@@ -54,10 +54,12 @@ export async function resolveHost(host: string): Promise<TenantInfo | null> {
   const hit = tenancy.hostCache.get(host);
   if (hit && hit.exp > now) return hit.tenant;
 
-  const domain = await platformDb().saasPanelDomain.findUnique({
-    where: { host },
-    select: { status: true, panel: { select: panelSelect } },
-  });
+  const select = { status: true, panel: { select: panelSelect } } as const;
+  let domain = await platformDb().saasPanelDomain.findUnique({ where: { host }, select });
+  // "www.example.com" serves the panel registered as "example.com".
+  if (!domain && host.startsWith('www.')) {
+    domain = await platformDb().saasPanelDomain.findUnique({ where: { host: host.slice(4) }, select });
+  }
   const tenant = domain && domain.status === 'active' ? toInfo(domain.panel) : null;
   if (tenancy.hostCache.size > 20000) tenancy.hostCache.clear();
   tenancy.hostCache.set(host, { tenant, exp: now + (tenant ? HIT_TTL : MISS_TTL) });

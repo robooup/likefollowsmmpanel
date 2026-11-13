@@ -88,8 +88,8 @@ const ChildPanel: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const nameservers = {
-    ns1: 'ns1.smmdoc.com',
-    ns2: 'ns2.smmdoc.com',
+    ns1: '',
+    ns2: '',
   };
 
   useEffect(() => {

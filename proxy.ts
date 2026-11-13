@@ -4,7 +4,7 @@ import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server
 import { isInternalHost, isPlatformHost } from './lib/tenant/config';
 import { getTenantStore, normalizeHost, tenancy } from './lib/tenant/context';
 import { isTenantServing, resolveHost } from './lib/tenant/registry';
-import { SAAS_SESSION_COOKIE, verifySaasSession } from './lib/saas/session';
+import { saasCookieName, verifySaasSession } from './lib/saas/session';
 import { getClientIP } from './lib/activity-logger';
 import {
     apiAuthPrefixes,
@@ -442,7 +442,7 @@ function notFound(isApi: boolean): NextResponse {
 }
 
 /** topupcraft.com itself: marketing site, customer portal, super admin. */
-async function platformProxy(req: NextRequest): Promise<NextResponse> {
+async function platformProxy(req: NextRequest, internalOrigin: string): Promise<NextResponse> {
   const { nextUrl } = req;
   const pathname = nextUrl.pathname;
 
@@ -462,7 +462,7 @@ async function platformProxy(req: NextRequest): Promise<NextResponse> {
   const needsLogin = isUnder(pathname, '/portal') || isUnder(pathname, '/admin');
   const isAuthPage = pathname === '/login' || pathname === '/register';
   if (needsLogin || isAuthPage) {
-    const session = await verifySaasSession(req.cookies.get(SAAS_SESSION_COOKIE)?.value);
+    const session = await verifySaasSession(req.cookies.get(saasCookieName())?.value);
     if (needsLogin && !session) {
       const login = new URL('/login', nextUrl);
       login.searchParams.set('next', pathname);
@@ -476,7 +476,7 @@ async function platformProxy(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const target = new URL(`${SAAS_PAGE_PREFIX}${pathname === '/' ? '' : pathname}`, nextUrl);
+  const target = new URL(`${SAAS_PAGE_PREFIX}${pathname === '/' ? '' : pathname}`, internalOrigin);
   target.search = nextUrl.search;
   return NextResponse.rewrite(target);
 }
@@ -484,15 +484,30 @@ async function platformProxy(req: NextRequest): Promise<NextResponse> {
 export default async function proxy(req: NextRequest, event: NextFetchEvent) {
   const rawHost = (req.headers.get('x-forwarded-host') || req.headers.get('host') || '').split(',')[0].trim().toLowerCase();
   const host = normalizeHost(rawHost);
+  const proto = (req.headers.get('x-forwarded-proto') || 'http').split(',')[0].trim() === 'https' ? 'https' : 'http';
+  // Behind the reverse proxy Next.js reports its own bind address as the URL
+  // host. Every redirect/rewrite below must use the host the visitor used.
+  const internalOrigin = req.nextUrl.origin; // rewrites must stay on this origin to be served in-process
+  if (rawHost) {
+    req.nextUrl.protocol = proto;
+    req.nextUrl.host = rawHost;
+  }
   const pathname = req.nextUrl.pathname;
   const isApi = isUnder(pathname, '/api');
+
+  // Domain verification probe: answered on whatever host the request came in on.
+  if (pathname === '/.well-known/tc-domain-check') {
+    const target = new URL(`${SAAS_API_PREFIX}/probe`, internalOrigin);
+    target.search = req.nextUrl.search;
+    return NextResponse.rewrite(target);
+  }
 
   // Loopback: only Caddy's on-demand-TLS check and the cron runner live here.
   if (isInternalHost(host) && !isPlatformHost(host)) {
     return isUnder(pathname, `${SAAS_API_PREFIX}/internal`) ? NextResponse.next() : notFound(isApi);
   }
 
-  if (isPlatformHost(host)) return platformProxy(req);
+  if (isPlatformHost(host)) return platformProxy(req, internalOrigin);
 
   // Everything else is a customer panel, identified by its domain.
   if (isUnder(pathname, SAAS_PAGE_PREFIX) || isUnder(pathname, SAAS_API_PREFIX)) return notFound(isApi);
@@ -514,7 +529,7 @@ export default async function proxy(req: NextRequest, event: NextFetchEvent) {
         { status: tenant ? 503 : 404 }
       );
     }
-    const target = new URL(`${SAAS_PAGE_PREFIX}/panel-status`, req.nextUrl);
+    const target = new URL(`${SAAS_PAGE_PREFIX}/panel-status`, internalOrigin);
     target.search = `?state=${tenant ? encodeURIComponent(tenant.status) : 'unknown'}`;
     return NextResponse.rewrite(target, { status: tenant ? 503 : 404 });
   }
@@ -525,7 +540,6 @@ export default async function proxy(req: NextRequest, event: NextFetchEvent) {
     store.tenantId = tenant.id;
     return run();
   }
-  const proto = (req.headers.get('x-forwarded-proto') || 'http').split(',')[0].trim() === 'https' ? 'https' : 'http';
   return tenancy.als.run({ host, proto, origin: `${proto}://${rawHost}`, tenantId: tenant.id }, run);
 }
 

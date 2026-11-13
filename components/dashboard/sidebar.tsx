@@ -111,8 +111,8 @@ function SideBarContent({
                 ) : session?.user?.role === 'admin' ? (
                   <Link href="/">
                     <Image
-                      src="/general/sit-logo-dark.png"
-                      alt="Suitable IT Logo"
+                      src="/general/logo-dark.png"
+                      alt="Logo"
                       width={280}
                       height={60}
                       className="object-cover w-full h-[40px] cursor-pointer hover:opacity-80 transition-opacity duration-200"

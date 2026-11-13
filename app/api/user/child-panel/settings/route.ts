@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 const STATIC_NAMESERVERS = {
-  ns1: 'ns1.likefollowsmmpanel.com',
-  ns2: 'ns2.likefollowsmmpanel.com',
+  ns1: '',
+  ns2: '',
 };
 
 export async function GET() {

@@ -969,8 +969,11 @@ const APIProvidersPage = () => {
 
       if (currentStatus === 'unknown' || !currentStatus) {
 
-        const { testProviderConnection: validateConnection } = await import('@/lib/utils/provider-validator');
-        const connectionPromise = validateConnection(providerId);
+        // Server-side check (the validator needs database access).
+        const connectionPromise: Promise<{ success: boolean; error?: string }> = fetch(
+          `/api/admin/providers/${providerId}/test-connection`,
+          { method: 'POST' }
+        ).then((response) => response.json());
         const timeoutPromise = new Promise<{success: boolean, error?: string}>((_, reject) => 
           setTimeout(() => reject(new Error('Connection test timeout')), 15000)
         );

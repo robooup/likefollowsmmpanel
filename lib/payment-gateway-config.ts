@@ -69,7 +69,7 @@ export async function getPaymentGatewayCheckoutUrl(): Promise<string> {
   const baseUrl = config.apiUrl.trim();
 
   if (!baseUrl) {
-    return 'https://pay.likefollowsmmpanel.com/api/checkout-v2';
+    throw new Error('Payment gateway URL is not configured');
   }
 
   const cleanUrl = baseUrl.replace(/\/$/, '');
@@ -86,7 +86,7 @@ export async function getPaymentGatewayVerifyUrl(): Promise<string> {
   const baseUrl = config.apiUrl.trim();
 
   if (!baseUrl) {
-    return 'https://pay.likefollowsmmpanel.com/api/verify-payment';
+    throw new Error('Payment gateway URL is not configured');
   }
 
   const cleanUrl = baseUrl.replace(/\/$/, '');

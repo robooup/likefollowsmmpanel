@@ -4,8 +4,16 @@ import { platformSecret } from '@/lib/tenant/config';
 // Session for the TopupCraft site itself (customers + super admin). Completely
 // separate from the NextAuth sessions used inside customer panels.
 
-export const SAAS_SESSION_COOKIE = 'tc_session';
 export const SAAS_SESSION_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+
+/**
+ * In production the cookie uses the `__Host-` prefix: browsers then refuse to
+ * let any subdomain (i.e. a customer panel on *.topupcraft.com) set or
+ * overwrite it.
+ */
+export function saasCookieName(): string {
+  return process.env.NODE_ENV === 'production' ? '__Host-tc_session' : 'tc_session';
+}
 
 export type SaasSession = {
   userId: number;

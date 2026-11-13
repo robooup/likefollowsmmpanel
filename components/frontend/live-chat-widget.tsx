@@ -178,13 +178,13 @@ export default function LiveChatWidget() {
   const handleTelegram = () => {
     const telegramUrl = liveChatSettings.telegramUsername
       ? `https://t.me/${liveChatSettings.telegramUsername.replace('@', '')}`
-      : 'https://t.me/Smmdoc';
-    window.open(telegramUrl, '_blank');
+      : '';
+    if (telegramUrl) window.open(telegramUrl, '_blank');
   };
 
   const handleMessenger = () => {
-    const messengerUrl = liveChatSettings.messengerUrl || 'https://m.me/likefollowsmmpanelbd';
-    window.open(messengerUrl, '_blank');
+    const messengerUrl = liveChatSettings.messengerUrl || '';
+    if (messengerUrl) window.open(messengerUrl, '_blank');
   };
 
   if (!isSettingsLoaded || (!liveChatSettings.enabled && !liveChatSettings.socialMediaEnabled)) {

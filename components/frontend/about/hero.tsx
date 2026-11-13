@@ -74,7 +74,7 @@ export default function Hero() {
         <div className="-mt-[30px] lg:-mt-[0px] text-center lg:text-right">
           <div className="relative">
             <Image
-              src="/smmdoc-about-us.webp"
+              src="/about-us.webp"
               alt="Like Follow SMM Panel about us"
               width={600}
               height={400}

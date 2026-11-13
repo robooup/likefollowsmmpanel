@@ -177,10 +177,8 @@ const Footer = () => {
                 ) : null}
               </Link>
               <p className="text-white text-sm leading-relaxed mb-4">
-                Boost your online presence today with our Cheap SMM Panel – the
-                ultimate solution for social media success! Smmdoc is a SMM
-                Panel with more then 3 years on the market and 21 Orders
-                processed successfully until now!
+                Boost your online presence today with our SMM panel – a simple,
+                affordable way to grow on every major social network.
               </p>
               <ul className="social_media_links flex gap-2 list-none p-0 m-0">
                 {socialLinks.map((social, index) => {

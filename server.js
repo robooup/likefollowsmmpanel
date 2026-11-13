@@ -35,7 +35,10 @@ function isLoopback(address) {
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
 }
 
-const app = next({ dev, hostname, port });
+// `hostname` here is only what Next.js uses to build its internal request URLs
+// (the proxy relies on it to recognise its own rewrites); the socket itself is
+// bound to HOSTNAME_BIND below.
+const app = next({ dev, hostname: 'localhost', port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
