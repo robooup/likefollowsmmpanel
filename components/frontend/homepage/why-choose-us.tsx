@@ -1,8 +1,10 @@
 'use client';
 
-import { features } from '@/data/frontend/homepage/features';
+import { features as rawFeatures } from '@/data/frontend/homepage/features';
+import { useBranded } from '@/components/app-name';
 
 export default function WhyChooseUs() {
+  const features = useBranded(rawFeatures);
   return (
     <section
       id="whyChooseUs"

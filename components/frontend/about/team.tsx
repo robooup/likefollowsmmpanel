@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import Image from 'next/image';
 import React from 'react';
@@ -49,7 +50,7 @@ export default function Team() {
             and Innovation
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6 text-justify leading-relaxed transition-colors duration-200">
-            The strength of Like Follow SMM Panel lies in our diverse team of professionals.
+            The strength of <AppName /> lies in our diverse team of professionals.
             Comprising seasoned digital marketers, creative strategists, and
             tech-savvy innovators, our team brings a wealth of experience and
             fresh perspectives to the table. We foster a culture of continuous

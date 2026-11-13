@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -279,7 +280,7 @@ const Footer = () => {
                   href="/"
                   className="text-white font-bold hover:text-[var(--primary)] dark:hover:text-[var(--secondary)] transition-colors duration-300"
                 >
-                  Like Follow SMM Panel
+                  <AppName />
                 </Link>
                 .
               </p>

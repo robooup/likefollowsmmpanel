@@ -9,29 +9,29 @@ export const faqData: FAQ[] = [
     id: 1,
     question: 'What Exactly is an SMM Panel?',
     answer:
-      'A Social Media Marketing (SMM) Panel is a website that offers different social media marketing services. These services help you get more followers and likes and increase your engagement and visibility on social media. SMM Panels, like Like Follow SMM Panel, are made to be easy to use. They let businesses and people straightforwardly improve their social media presence.',
+      'A Social Media Marketing (SMM) Panel is a website that offers different social media marketing services. These services help you get more followers and likes and increase your engagement and visibility on social media. SMM Panels, like {appName}, are made to be easy to use. They let businesses and people straightforwardly improve their social media presence.',
   },
   {
     id: 2,
     question: 'How Safe is Using an SMM Panel for My Business?',
     answer:
-      'Safety is a major focus at Like Follow SMM Panel. Our SMM Panel is entirely secure and follows all terms of service of social media platforms. We employ genuine marketing methods to guarantee that your accounts stay safe and your social media growth is natural and lasting.',
+      'Safety is a major focus at {appName}. Our SMM Panel is entirely secure and follows all terms of service of social media platforms. We employ genuine marketing methods to guarantee that your accounts stay safe and your social media growth is natural and lasting.',
   },
   {
     id: 3,
-    question: 'What services does Like Follow SMM Panel offer?',
+    question: 'What services does {appName} offer?',
     answer:
       'We provide various social media marketing services, covering platforms like Facebook, Instagram, Twitter, YouTube, LinkedIn, TikTok, Telegram, Spotify, Discord, Pinterest, and SoundCloud. Additionally, we offer Website Traffic enhancement.',
   },
   {
     id: 4,
-    question: 'How do I get started with Like Follow SMM Panel?',
+    question: 'How do I get started with {appName}?',
     answer:
       'Starting is simple! Just sign up for a free account on our website, check out our services, add funds to your account, and make your order. Our team will handle the growth of your social media from there.',
   },
   {
     id: 5,
-    question: 'Is Like Follow SMM Panel suitable for small businesses?',
+    question: 'Is {appName} suitable for small businesses?',
     answer:
       "Certainly! Our services are crafted to be budget-friendly and impactful for businesses of all sizes. We provide custom-made solutions to small businesses' specific needs, guaranteeing they receive the best return on investment (ROI).",
   },
@@ -49,9 +49,9 @@ export const faqData: FAQ[] = [
   },
   {
     id: 8,
-    question: 'What makes Like Follow SMM Panel different from other SMM panels?',
+    question: 'What makes {appName} different from other SMM panels?',
     answer:
-      'Like Follow SMM Panel stands out with our commitment to quality, reliability, and customer satisfaction. We offer competitive pricing, 24/7 customer support, and a user-friendly interface. Our services are designed to provide real, lasting results for your social media growth.',
+      '{appName} stands out with our commitment to quality, reliability, and customer satisfaction. We offer competitive pricing, 24/7 customer support, and a user-friendly interface. Our services are designed to provide real, lasting results for your social media growth.',
   },
   {
     id: 9,

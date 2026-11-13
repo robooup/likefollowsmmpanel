@@ -347,7 +347,7 @@ const SocialShare: React.FC<{ post: BlogPost }> = ({ post }) => {
 
   const shareViaEmail = () => {
     const subject = encodeURIComponent(post.title);
-    const body = encodeURIComponent(`Check out this article: ${post.title}\n\n${post.excerpt || 'Read this insightful article on Like Follow SMM Panel blog.'}\n\nRead more: ${currentUrl}`);
+    const body = encodeURIComponent(`Check out this article: ${post.title}\n\n${post.excerpt || 'Read this insightful article on our blog.'}\n\nRead more: ${currentUrl}`);
     window.open(`mailto:?subject=${subject}&body=${body}`);
     setIsOpen(false);
   };

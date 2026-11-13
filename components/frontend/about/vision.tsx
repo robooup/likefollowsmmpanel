@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import Image from 'next/image';
 import React from 'react';
@@ -42,7 +43,7 @@ export default function Vision() {
             be the harbinger of innovation in social media marketing,
             constantly adapting to the ever-evolving digital landscape. We
             envision a world where every business, regardless of its size, has
-            equal opportunity to thrive in the digital marketplace. Like Follow SMM Panel
+            equal opportunity to thrive in the digital marketplace. <AppName />{' '}
             strives to lead the way in creating more inclusive, effective, and
             sustainable social media strategies.
           </p>

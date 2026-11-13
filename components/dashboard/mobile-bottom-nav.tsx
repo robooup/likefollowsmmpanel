@@ -156,7 +156,7 @@ export default function MobileBottomNav() {
                 <Link href="/" onClick={() => setSidebarOpen(false)}>
                   <Image 
                     src="/general/logo.png" 
-                    alt="Like Follow SMM Panel Logo" 
+                    alt="Logo" 
                     width={280} 
                     height={60} 
                     className="object-cover w-full h-[40px] cursor-pointer hover:opacity-80 transition-opacity duration-200"

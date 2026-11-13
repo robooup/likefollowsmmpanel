@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
     
     const fallbackManifest = {
       id: '/',
-      name: 'Like Follow SMM Panel',
-      short_name: 'Like Follow SMM Panel',
+      name: 'SMM Panel',
+      short_name: 'SMM Panel',
       description: 'Your Social Media Growth Partner',
       start_url: '/',
       scope: '/',

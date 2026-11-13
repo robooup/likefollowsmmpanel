@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
@@ -122,7 +123,7 @@ const BlogPage: React.FC = () => {
             Strategies
           </h1>
           <p className="text-gray-600 dark:text-gray-300 text-lg leading-relaxed max-w-4xl mx-auto transition-colors duration-200">
-            Welcome to Like Follow SMM Panel's blog page. Your gateway to the latest insights
+            Welcome to <AppName />'s blog page. Your gateway to the latest insights
             and trends in social media marketing. This resource outlines how we
             share knowledge, provide valuable content, and help you stay ahead
             in the digital marketing landscape with cutting-edge strategies and

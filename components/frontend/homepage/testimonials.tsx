@@ -1,9 +1,11 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Testimonial, testimonialsData } from '@/data/frontend/homepage/testimonials';
+import { Testimonial, testimonialsData as rawTestimonialsData } from '@/data/frontend/homepage/testimonials';
+import { useBranded } from '@/components/app-name';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
 const Testimonials: React.FC = () => {
+  const testimonialsData = useBranded(rawTestimonialsData);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -20,7 +22,8 @@ const Testimonials: React.FC = () => {
   }, []);
 
   const itemsPerPage = 3;
-  const maxSlide = testimonialsData.length - itemsPerPage;
+  const maxSlide = testimonialsData.length - itemsPerPage;
+
   useEffect(() => {
     if (!isAutoPlaying) return;
 
@@ -36,7 +39,8 @@ const Testimonials: React.FC = () => {
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index);
-    setIsAutoPlaying(false);
+    setIsAutoPlaying(false);
+
     setTimeout(() => setIsAutoPlaying(true), 10000);
   };
 

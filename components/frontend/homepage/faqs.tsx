@@ -1,10 +1,13 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import { FAQ, faqData } from '@/data/frontend/homepage/faqs';
+import { FAQ, faqData as rawFaqData } from '@/data/frontend/homepage/faqs';
+import { useBranded } from '@/components/app-name';
 
 function FAQs() {
+  const faqData = useBranded(rawFaqData);
   const [openItems, setOpenItems] = useState<number[]>([]);
 
   const toggleItem = (id: number) => {
@@ -25,7 +28,7 @@ function FAQs() {
           <h2 className="text-3xl lg:text-5xl font-bold text-gray-900 dark:text-white transition-colors duration-200">
             People Also Asked to{' '}
             <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-              Like Follow SMM Panel
+              <AppName />
             </span>
           </h2>
         </div>

@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import Image from 'next/image';
 import React from 'react';
@@ -16,12 +17,12 @@ const Hero: React.FC = () => {
             <h1 className="text-3xl lg:text-5xl font-bold text-gray-900 mb-4 dark:text-white leading-tight transition-colors duration-200">
               Reach Out to{' '}
               <span className="text-[var(--primary)] dark:text-[var(--secondary)] transition-colors duration-200">
-                Like Follow SMM Panel{' '}
+                <AppName />{' '}
               </span>
               for Your Social Media Solutions
             </h1>
             <p className="text-gray-600 dark:text-gray-300 text-lg text-justify mb-6 leading-relaxed transition-colors duration-200">
-              At Like Follow SMM Panel, we're always eager to connect with you and discuss
+              At <AppName />, we're always eager to connect with you and discuss
               how we can elevate your social media presence. Whether you have
               questions about our services, need assistance in choosing the
               right strategy, or want to discuss a customized plan, we're here

@@ -1,4 +1,5 @@
 'use client';
+import { AppName } from '@/components/app-name';
 
 import React from 'react';
 import Image from 'next/image';
@@ -25,7 +26,7 @@ const About: React.FC = () => {
               </span>
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed transition-colors duration-200 text-justify">
-              At Like Follow SMM Panel, we revolutionize digital success through our
+              At <AppName />, we revolutionize digital success through our
               budget-friendly and top-notch social media marketing solutions.
               Since our inception in 2021, we have emerged as the preferred
               choice for the most affordable SMM panels, seamlessly combining

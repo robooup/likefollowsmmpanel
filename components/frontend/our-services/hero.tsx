@@ -1,3 +1,4 @@
+import { AppName } from '@/components/app-name';
 import Image from 'next/image';
 import React from 'react';
 import { FaArrowRight } from 'react-icons/fa';
@@ -12,13 +13,13 @@ const Hero: React.FC = () => {
               Services & Pricing
             </h1>
             <p className="text-gray-600 dark:text-gray-300 text-justify text-lg mb-6 leading-relaxed transition-colors duration-200">
-              Discover your ideal social media strategy with Like Follow SMM Panel's Service
+              Discover your ideal social media strategy with <AppName />'s Service
               & Pricing List. This page offers a clear, concise table of our
               services across various platforms, along with transparent
               pricing to fit your budget. From boosting your Facebook presence
               to enhancing your YouTube channel, our services are tailored to
               meet your needs. For more about our mission and approach, visit
-              our About Us page. Make an informed choice with Like Follow SMM Panel, where
+              our About Us page. Make an informed choice with <AppName />, where
               quality meets affordability in social media marketing.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
