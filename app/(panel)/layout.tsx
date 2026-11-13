@@ -45,7 +45,7 @@ const carbonFont = Heebo({
 export async function generateMetadata(): Promise<Metadata> {
   const appName = await getAppName();
 
-  const faviconUrl = `/api/favicon?t=${Date.now()}`;
+  const faviconUrl = '/api/favicon'; // stable on purpose, see RootLayout
 
   return {
     title: {
@@ -79,7 +79,9 @@ export default async function RootLayout({
   const session = await auth();
   const serverCurrency = await getUserCurrency();
   const appName = await getAppName();
-  const faviconHref = `/api/favicon?t=${Date.now()}`;
+  // Must stay the same between renders: a changing href makes React replace the
+  // <link> elements in <head> on every navigation.
+  const faviconHref = '/api/favicon';
   // Staff always get the default look so the admin area is never restyled.
   const role = session?.user?.role;
   const isStaff = role === 'admin' || role === 'moderator';

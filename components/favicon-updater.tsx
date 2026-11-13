@@ -3,46 +3,39 @@
 import { useEffect } from 'react';
 import { SETTINGS_INVALIDATED_EVENT } from '@/lib/settings-invalidation';
 
+// Refreshes the favicon after the panel's icon changes.
+//
+// The <link> elements in <head> are rendered by the root layout, so React owns
+// them. Removing them here made React throw ("Cannot read properties of null
+// (reading 'removeChild')") the next time it committed a navigation, which
+// left the page stuck until the link was clicked again. Only the href of the
+// existing elements is changed; elements are created just when none exist.
 function updateFaviconLinks() {
   if (typeof document === 'undefined' || !document.head) return;
 
-  const timestamp = Date.now();
-  const faviconHref = `/api/favicon?t=${timestamp}`;
+  const faviconHref = `/api/favicon?t=${Date.now()}`;
+  const rels = ['icon', 'shortcut icon', 'apple-touch-icon'];
 
-  const existingLinks = document.querySelectorAll(
-    "link[rel='icon'], link[rel='shortcut icon'], link[rel='apple-touch-icon']"
-  );
-  existingLinks.forEach((link) => {
-    try {
-      if (link.parentNode && document.head.contains(link)) {
-        link.remove();
-      }
-    } catch {
+  for (const rel of rels) {
+    const links = document.head.querySelectorAll<HTMLLinkElement>(`link[rel='${rel}']`);
+    if (links.length > 0) {
+      links.forEach((link) => {
+        link.href = faviconHref;
+      });
+      continue;
     }
-  });
-
-  const faviconLink = document.createElement('link');
-  faviconLink.rel = 'icon';
-  faviconLink.href = faviconHref;
-  faviconLink.type = 'image/png';
-  document.head.appendChild(faviconLink);
-
-  const shortcutLink = document.createElement('link');
-  shortcutLink.rel = 'shortcut icon';
-  shortcutLink.href = faviconHref;
-  shortcutLink.type = 'image/png';
-  document.head.appendChild(shortcutLink);
-
-  const appleLink = document.createElement('link');
-  appleLink.rel = 'apple-touch-icon';
-  appleLink.href = faviconHref;
-  document.head.appendChild(appleLink);
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = faviconHref;
+    if (rel !== 'apple-touch-icon') link.type = 'image/png';
+    link.setAttribute('data-favicon-updater', '');
+    document.head.appendChild(link);
+  }
 }
 
 export default function FaviconUpdater() {
   useEffect(() => {
-    updateFaviconLinks();
-    const timeoutId = setTimeout(updateFaviconLinks, 100);
+    const timeoutId = setTimeout(() => {}, 0);
 
     const handleSettingsInvalidated = () => {
       updateFaviconLinks();
