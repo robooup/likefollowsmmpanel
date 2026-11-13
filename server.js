@@ -74,6 +74,7 @@ app.prepare().then(() => {
       const writeHead = res.writeHead;
       res.writeHead = function (...args) {
         const fix = (value) => {
+          if (Array.isArray(value)) return value.map(fix);
           if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return value;
           try {
             const url = new URL(value);

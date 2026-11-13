@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    // Panel uploads are served per tenant from /api/files/...; the built-in
+    // optimizer fetches them without the panel's host, gets nothing back and
+    // answers 400. Serve images as they are (also closes the open image proxy
+    // that the wildcard remote pattern below would otherwise allow).
+    unoptimized: true,
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
