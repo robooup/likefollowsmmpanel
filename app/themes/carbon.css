@@ -1877,3 +1877,67 @@ html[data-user-theme='carbon'] body {
 #cb-app .cb-toolbar + .cb-table-card {
   margin-top: 12px;
 }
+
+/* ---------- Tickets and Mass order ---------- */
+
+#cb-app textarea.cb-input.cb-textarea {
+  min-height: 160px;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+#cb-app .cb-skeleton-tall {
+  height: 160px;
+}
+
+#cb-app .cb-attach {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+#cb-app .cb-attach .cb-link {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cb-text);
+}
+
+#cb-app .cb-attach .cb-link svg {
+  color: var(--cb-accent);
+}
+
+#cb-app .cb-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 6px;
+  background: var(--cb-surface-2);
+  font-size: 13px;
+}
+
+#cb-app .cb-file button {
+  display: inline-flex;
+  background: transparent;
+  color: var(--cb-muted);
+  cursor: pointer;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-compact {
+  min-width: 0;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-compact thead th:first-child,
+#cb-app .cb-content table.cb-table.cb-table-compact tbody td:first-child {
+  padding-left: 16px;
+}
+
+#cb-app .cb-narrow .cb-toolbar {
+  padding: 24px;
+}
+
+#cb-app .cb-narrow.cb-page {
+  gap: 16px;
+}
