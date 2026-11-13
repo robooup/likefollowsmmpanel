@@ -497,6 +497,8 @@ function mapProviderStatus(providerStatus: string): string {
     'error': 'failed'
   };
 
-  return statusMap[providerStatus?.toLowerCase()] || 'pending';
+  // Providers answer "In progress" with a space; match it the same way the scheduled sync does.
+  const normalized = providerStatus.toLowerCase().trim().replace(/\s+/g, '_');
+  return statusMap[normalized] || statusMap[providerStatus.toLowerCase().trim()] || 'pending';
 }
 
