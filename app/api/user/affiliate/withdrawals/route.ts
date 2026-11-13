@@ -56,9 +56,7 @@ export async function GET(request: NextRequest) {
         }
       }
       else {
-        wherePayouts.notes = {
-          contains: searchTrimmed,
-        }
+        wherePayouts.notes = { contains: searchTrimmed, mode: 'insensitive' as const }
       }
     }
 

@@ -38,14 +38,15 @@ export async function GET(request: NextRequest) {
       } else if (searchTrimmed.length === 10 && /^[A-Z0-9]+$/.test(searchTrimmed)) {
         wherePayouts.notes = {
           contains: `"withdrawalId":"${searchTrimmed}"`,
+          mode: 'insensitive' as const,
         }
       } else {
         const matchingUsers = await db.users.findMany({
           where: {
             OR: [
-              { username: { contains: search } },
-              { email: { contains: search } },
-              { name: { contains: search } },
+              { username: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+              { name: { contains: search, mode: 'insensitive' as const } },
             ],
           },
           select: { id: true },

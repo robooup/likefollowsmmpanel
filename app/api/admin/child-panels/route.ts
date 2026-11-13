@@ -27,15 +27,15 @@ export async function GET(request: NextRequest) {
     if (search) {
       const searchTrimmed = search.trim();
       const searchConditions: any[] = [
-        { domain: { contains: searchTrimmed } },
-        { panelName: { contains: searchTrimmed } },
+        { domain: { contains: searchTrimmed, mode: 'insensitive' as const } },
+        { panelName: { contains: searchTrimmed, mode: 'insensitive' as const } },
       ];
 
       const matchingUsers = await db.users.findMany({
         where: {
           OR: [
-            { username: { contains: searchTrimmed } },
-            { email: { contains: searchTrimmed } },
+            { username: { contains: searchTrimmed, mode: 'insensitive' as const } },
+            { email: { contains: searchTrimmed, mode: 'insensitive' as const } },
           ],
         },
         select: { id: true },

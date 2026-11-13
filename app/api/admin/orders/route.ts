@@ -64,10 +64,10 @@ export async function GET(req: NextRequest) {
       const searchTrimmed = search.trim();
       if (searchTrimmed.length > 0) {
         whereClause.OR = [
-          { link: { contains: searchTrimmed, mode: 'insensitive' } },
-          { user: { name: { contains: searchTrimmed, mode: 'insensitive' } } },
-          { user: { email: { contains: searchTrimmed, mode: 'insensitive' } } },
-          { service: { name: { contains: searchTrimmed, mode: 'insensitive' } } }
+          { link: { contains: searchTrimmed, mode: 'insensitive' as const } },
+          { user: { name: { contains: searchTrimmed, mode: 'insensitive' as const } } },
+          { user: { email: { contains: searchTrimmed, mode: 'insensitive' as const } } },
+          { service: { name: { contains: searchTrimmed, mode: 'insensitive' as const } } }
         ];
       }
     }

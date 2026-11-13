@@ -89,14 +89,14 @@ export async function GET(request: NextRequest) {
         {
           subject: {
             contains: search,
-            mode: 'insensitive'
+            mode: 'insensitive' as const
           }
         },
         {
           user: {
             name: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         },
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           user: {
             username: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         },
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           user: {
             email: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         }

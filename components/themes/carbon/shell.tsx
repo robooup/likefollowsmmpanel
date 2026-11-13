@@ -29,25 +29,6 @@ const NAV: { title: string; label: string; needs?: keyof ModuleFlags }[] = [
   { title: 'Terms', label: 'Terms' },
 ];
 
-function useLogo(): string {
-  const [logo, setLogo] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/public/general-settings')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        const settings = data?.generalSettings;
-        const value = String(settings?.siteDarkLogo || settings?.siteLogo || '').trim();
-        if (!cancelled && value) setLogo(value);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return logo;
-}
-
 async function logout() {
   try {
     const { signOut } = await import('next-auth/react');
@@ -60,7 +41,6 @@ async function logout() {
 export default function CarbonShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
   const flags = useModuleFlags();
-  const logo = useLogo();
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: stats } = useGetUserStatsQuery(undefined);
   const balance = Number(stats?.data?.balance || 0);
@@ -103,7 +83,7 @@ export default function CarbonShell({ children }: { children: React.ReactNode })
           {menuOpen ? <FaTimes /> : <FaBars />}
         </button>
         <Link href="/new-order" className="cb-brand">
-          {logo ? <img src={logo} alt="Logo" className="cb-brand-logo" /> : <AppName />}
+          <AppName />
         </Link>
         <div className="cb-topbar-right">
           <Link href="/add-funds" className="cb-balance" title="Add funds">

@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
           user: {
             email: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         },
@@ -49,21 +49,21 @@ export async function GET(req: NextRequest) {
           user: {
             name: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         },
         {
           id: {
             contains: search,
-            mode: 'insensitive'
+            mode: 'insensitive' as const
           }
         },
         {
           service: {
             name: {
               contains: search,
-              mode: 'insensitive'
+              mode: 'insensitive' as const
             }
           }
         }

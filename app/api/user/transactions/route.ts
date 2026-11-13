@@ -27,9 +27,9 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { transactionId: { contains: search, mode: 'insensitive' } },
-        { invoiceId: { contains: search, mode: 'insensitive' } },
-        { paymentMethod: { contains: search, mode: 'insensitive' } },
+        { transactionId: { contains: search, mode: 'insensitive' as const } },
+        { invoiceId: { contains: search, mode: 'insensitive' as const } },
+        { paymentMethod: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 

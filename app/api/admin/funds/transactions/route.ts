@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
     if (search) {
       whereCondition = {
         OR: [
-          { transactionId: { contains: search } },
-          { user: { name: { contains: search } } },
-          { user: { email: { contains: search } } },
+          { transactionId: { contains: search, mode: 'insensitive' as const } },
+          { user: { name: { contains: search, mode: 'insensitive' as const } } },
+          { user: { email: { contains: search, mode: 'insensitive' as const } } },
         ],
       };
     }

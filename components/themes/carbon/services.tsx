@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FaBars,
+  FaChevronDown,
+  FaFilter,
   FaDiscord,
   FaFacebook,
   FaGlobe,
@@ -70,17 +72,36 @@ export default function CarbonServices() {
   } = useServicesList();
 
   const [platform, setPlatform] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
 
-  // Categories are matched to a platform by name, the same way New order does it.
+  useEffect(() => {
+    if (!filterOpen) return;
+    const close = (event: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) setFilterOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [filterOpen]);
+
+  const cleanName = (name: string) => name.replace(/\s*\(ID:\s*\d+\)\s*$/, '');
+
+  // Categories with services, matched to a platform by name the same way New order does it.
+  const nonEmpty = useMemo(
+    () => Object.entries(groupedServices).filter(([, services]) => services.length > 0),
+    [groupedServices]
+  );
+
   const groups = useMemo(() => {
-    const entries = Object.entries(groupedServices);
-    if (!platform) return entries;
-    return entries.filter(([name]) => {
+    return nonEmpty.filter(([name]) => {
+      if (category && name !== category) return false;
+      if (!platform) return true;
       const lower = name.toLowerCase();
       if (platform === 'Other') return !KNOWN.some((keyword) => lower.includes(keyword.toLowerCase()));
       return lower.includes(platform.toLowerCase());
     });
-  }, [groupedServices, platform]);
+  }, [nonEmpty, platform, category]);
 
   const busy = loading || isSearchLoading;
 
@@ -102,7 +123,10 @@ export default function CarbonServices() {
               key={name}
               type="button"
               className={`cb-chip ${keyword === platform ? 'is-active' : ''}`}
-              onClick={() => setPlatform(keyword)}
+              onClick={() => {
+                setPlatform(keyword);
+                setCategory(null);
+              }}
             >
               <Icon className="cb-chip-icon" />
               <span>{name}</span>
@@ -111,19 +135,51 @@ export default function CarbonServices() {
         </div>
 
         <div className="cb-filter-row">
-          <select
-            className="cb-input cb-filter-select"
-            aria-label="Services per page"
-            value={limit}
-            onChange={(event) => handleLimitChange(event.target.value)}
-          >
-            {PAGE_SIZES.filter((size) => size === '10' || totalServices >= Number(size)).map((size) => (
-              <option key={size} value={size}>
-                {size} per page
-              </option>
-            ))}
-            <option value="all">Show all</option>
-          </select>
+          <div className="cb-filter" ref={filterRef}>
+            <button
+              type="button"
+              className={`cb-btn cb-filter-btn ${category ? 'is-set' : ''}`}
+              aria-haspopup="listbox"
+              aria-expanded={filterOpen}
+              aria-label="Filter by category"
+              onClick={() => setFilterOpen((open) => !open)}
+            >
+              <FaFilter />
+              <FaChevronDown className="cb-filter-caret" />
+            </button>
+            {filterOpen && (
+              <div className="cb-menu" role="listbox">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!category}
+                  className={`cb-menu-item ${!category ? 'is-active' : ''}`}
+                  onClick={() => {
+                    setCategory(null);
+                    setFilterOpen(false);
+                  }}
+                >
+                  All categories
+                </button>
+                {nonEmpty.map(([name]) => (
+                  <button
+                    key={name}
+                    type="button"
+                    role="option"
+                    aria-selected={category === name}
+                    className={`cb-menu-item ${category === name ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setCategory(name);
+                      setPlatform(null);
+                      setFilterOpen(false);
+                    }}
+                  >
+                    {cleanName(name)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="cb-searchbar">
             <input
               type="search"
@@ -166,13 +222,17 @@ export default function CarbonServices() {
             ) : groups.length === 0 ? (
               <tr>
                 <td colSpan={8} className="cb-empty">
-                  {platform ? `No ${platform === 'Other' ? 'other' : platform} services found.` : 'No services found.'}
+                  {search.trim()
+                    ? `No services match "${search.trim()}".`
+                    : platform
+                    ? `No ${platform === 'Other' ? 'other' : platform} services found.`
+                    : 'No services found.'}
                 </td>
               </tr>
             ) : (
               groups.map(([categoryName, services]) => [
                 <tr key={`cat-${categoryName}`} className="cb-cat-row">
-                  <td colSpan={8}>{categoryName.replace(/\s*\(ID:\s*\d+\)\s*$/, '')}</td>
+                  <td colSpan={8}>{cleanName(categoryName)}</td>
                 </tr>,
                 ...services.map((service: any) => (
                   <tr key={service.id}>
@@ -207,22 +267,39 @@ export default function CarbonServices() {
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {totalServices > 0 && (
         <div className="cb-pager">
-          <button type="button" className="cb-btn cb-btn-ghost cb-btn-small" disabled={page <= 1 || loading} onClick={handlePrevious}>
-            Previous
-          </button>
-          <span>
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            className="cb-btn cb-btn-ghost cb-btn-small"
-            disabled={page >= totalPages || loading}
-            onClick={handleNext}
+          <select
+            className="cb-input cb-pager-select"
+            aria-label="Services per page"
+            value={limit}
+            onChange={(event) => handleLimitChange(event.target.value)}
           >
-            Next
-          </button>
+            {PAGE_SIZES.filter((size) => size === '10' || totalServices >= Number(size)).map((size) => (
+              <option key={size} value={size}>
+                {size} per page
+              </option>
+            ))}
+            <option value="all">Show all</option>
+          </select>
+          {totalPages > 1 && (
+            <>
+              <button type="button" className="cb-btn cb-btn-ghost cb-btn-small" disabled={page <= 1 || loading} onClick={handlePrevious}>
+                Previous
+              </button>
+              <span>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                type="button"
+                className="cb-btn cb-btn-ghost cb-btn-small"
+                disabled={page >= totalPages || loading}
+                onClick={handleNext}
+              >
+                Next
+              </button>
+            </>
+          )}
         </div>
       )}
 

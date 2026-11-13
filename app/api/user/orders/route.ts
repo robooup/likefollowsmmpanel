@@ -56,15 +56,15 @@ export async function GET(request: Request) {
             equals: isNaN(parseInt(search)) ? undefined : parseInt(search)
           }
         },
-        { link: { contains: search } },
+        { link: { contains: search, mode: 'insensitive' as const } },
         {
           service: {
-            name: { contains: search }
+            name: { contains: search, mode: 'insensitive' as const }
           }
         },
         {
           category: {
-            category_name: { contains: search }
+            category_name: { contains: search, mode: 'insensitive' as const }
           }
         }
       ].filter(condition => {

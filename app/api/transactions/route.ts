@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     if (search && adminView && session.user.role === 'admin') {
       if (searchType === 'id') {
         const searchConditions: any[] = [
-          { transactionId: { contains: search } },
-          { invoiceId: { contains: search } },
+          { transactionId: { contains: search, mode: 'insensitive' as const } },
+          { invoiceId: { contains: search, mode: 'insensitive' as const } },
         ];
         if (!isNaN(parseInt(search))) {
           searchConditions.push({ id: parseInt(search) });
@@ -44,24 +44,24 @@ export async function GET(request: NextRequest) {
         where.OR = searchConditions;
       } else if (searchType === 'username') {
         where.OR = [
-          { user: { name: { contains: search } } },
-          { user: { email: { contains: search } } },
-          { user: { username: { contains: search } } },
+          { user: { name: { contains: search, mode: 'insensitive' as const } } },
+          { user: { email: { contains: search, mode: 'insensitive' as const } } },
+          { user: { username: { contains: search, mode: 'insensitive' as const } } },
         ];
       } else {
         where.OR = [
-          { transactionId: { contains: search } },
-          { invoiceId: { contains: search } },
-          { user: { name: { contains: search } } },
-          { user: { email: { contains: search } } },
+          { transactionId: { contains: search, mode: 'insensitive' as const } },
+          { invoiceId: { contains: search, mode: 'insensitive' as const } },
+          { user: { name: { contains: search, mode: 'insensitive' as const } } },
+          { user: { email: { contains: search, mode: 'insensitive' as const } } },
         ];
       }
     }
 
     if (search && (!adminView || session.user.role !== 'admin')) {
       where.OR = [
-        { transactionId: { contains: search } },
-        { invoiceId: { contains: search } },
+        { transactionId: { contains: search, mode: 'insensitive' as const } },
+        { invoiceId: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 

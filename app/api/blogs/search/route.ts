@@ -19,8 +19,8 @@ export async function GET(req: NextRequest) {
         status: 'published',
         publishedAt: { lte: new Date() },
         OR: [
-          { title: { contains: term.trim() } },
-          { excerpt: { contains: term.trim() } }
+          { title: { contains: term.trim(), mode: 'insensitive' as const } },
+          { excerpt: { contains: term.trim(), mode: 'insensitive' as const } }
         ]
       },
       select: {

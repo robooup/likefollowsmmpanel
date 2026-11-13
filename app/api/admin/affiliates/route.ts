@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
       const matchedUsers = await db.users.findMany({
         where: {
           OR: [
-            { email: { contains: search } },
-            { username: { contains: search } },
-            { name: { contains: search } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { username: { contains: search, mode: 'insensitive' as const } },
+            { name: { contains: search, mode: 'insensitive' as const } },
           ],
         },
         select: { id: true },
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       })
       userIdsFilter = matchedUsers.map(u => u.id)
       whereAffiliates.OR = [
-        { referralCode: { contains: search } },
+        { referralCode: { contains: search, mode: 'insensitive' as const } },
       ]
       if (userIdsFilter.length > 0) {
         whereAffiliates.OR.push({ userId: { in: userIdsFilter } })

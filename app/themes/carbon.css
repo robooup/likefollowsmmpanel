@@ -229,7 +229,9 @@ html[data-user-theme='carbon'] body {
 .cb-content {
   max-width: 1180px;
   padding: 14px 16px 40px;
-  animation: cb-enter 0.22s ease both;
+  /* Opacity only: a transform here would become the containing block of every
+     position:fixed descendant, which pushed dialogs and toasts off screen. */
+  animation: cb-enter 0.2s ease;
 }
 
 #cb-app .cb-drawer {
@@ -250,8 +252,8 @@ html[data-user-theme='carbon'] body {
 }
 
 @keyframes cb-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes cb-fade {
@@ -428,7 +430,7 @@ html[data-user-theme='carbon'] body {
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
   color: var(--cb-text) !important;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -474,7 +476,7 @@ html[data-user-theme='carbon'] body {
   background: var(--cb-surface-2);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.6;
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -528,7 +530,7 @@ html[data-user-theme='carbon'] body {
   text-align: left;
   color: var(--cb-text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.12s ease;
 }
@@ -627,7 +629,7 @@ html[data-user-theme='carbon'] body {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
   color: var(--cb-text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   animation: cb-fade 0.18s ease;
 }
 
@@ -791,7 +793,7 @@ html[data-user-theme='carbon'] body {
   padding: 11px 10px;
   border: 0 !important;
   color: var(--cb-text);
-  font-weight: 600;
+  font-weight: 700;
   vertical-align: middle;
 }
 
@@ -896,7 +898,7 @@ html[data-user-theme='carbon'] body {
   justify-self: end;
   color: var(--cb-muted);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-note {
@@ -961,7 +963,7 @@ html[data-user-theme='carbon'] body {
   background: var(--cb-surface);
   color: var(--cb-muted);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -1110,7 +1112,7 @@ html[data-user-theme='carbon'] body {
   background: var(--cb-surface-2);
   color: var(--cb-text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.5;
 }
 
@@ -1215,7 +1217,7 @@ html[data-user-theme='carbon'] body {
   padding: 4px 12px;
   border-radius: 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-toplink:hover {
@@ -1236,7 +1238,7 @@ html[data-user-theme='carbon'] body {
   gap: 12px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 21px;
 }
 
@@ -1291,7 +1293,7 @@ html[data-user-theme='carbon'] body {
   background: var(--cb-surface-2);
   box-shadow: 0 4px 0 var(--cb-shadow);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-chip:hover {
@@ -1510,7 +1512,7 @@ html[data-user-theme='carbon'] body {
   box-shadow: 0 3px 0 var(--cb-shadow);
   color: #fff;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-chips-wide .cb-chip .cb-chip-icon {
@@ -1536,7 +1538,7 @@ html[data-user-theme='carbon'] body {
   flex: none;
   background-color: var(--cb-accent) !important;
   color: #fff !important;
-  font-weight: 600;
+  font-weight: 700;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ffffff' d='M0 0h10L5 6z'/%3E%3C/svg%3E") !important;
 }
 
@@ -1589,7 +1591,7 @@ html[data-user-theme='carbon'] body {
 #cb-app .cb-content table.cb-table tr.cb-cat-row td {
   padding: 12px 24px 12px 12px;
   border-top: 0 !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-col-fav {
@@ -1645,7 +1647,7 @@ html[data-user-theme='carbon'] body {
   gap: 14px;
   color: var(--cb-muted);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-pager .cb-btn {
@@ -1685,7 +1687,7 @@ html[data-user-theme='carbon'] body {
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 #cb-app .cb-toolbar {
@@ -1940,4 +1942,126 @@ html[data-user-theme='carbon'] body {
 
 #cb-app .cb-narrow.cb-page {
   gap: 16px;
+}
+
+/* ---------- Wordmark, weights, focus ----------
+   The reference renders its "600" text with a 700 face, so headings, menu
+   items, chips and tabs use 700 here; body text stays at 500. */
+
+#cb-app .cb-brand {
+  font-family: var(--font-carbon-brand), var(--font-carbon), system-ui, sans-serif !important;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  padding-top: 3px;
+}
+
+#cb-app .cb-brand *,
+#cb-app .cb-brand {
+  font-family: var(--font-carbon-brand), var(--font-carbon), system-ui, sans-serif !important;
+}
+
+#cb-app .cb-nav-item,
+#cb-app .cb-toplink,
+#cb-app .cb-tab,
+#cb-app .cb-chip,
+#cb-app .cb-chips-wide .cb-chip {
+  font-weight: 700;
+}
+
+#cb-app .cb-nav-icon {
+  width: 15px;
+  height: 15px;
+}
+
+#cb-app a:focus,
+#cb-app button:focus {
+  outline: none;
+}
+
+#cb-app a:focus-visible,
+#cb-app button:focus-visible {
+  outline: 2px solid var(--cb-accent);
+  outline-offset: 2px;
+}
+
+#cb-app .cb-nav-item,
+#cb-app .cb-nav-item:focus,
+#cb-app .cb-nav-item:focus-visible {
+  border: 0;
+  box-shadow: none;
+}
+
+/* Services: smaller platform icons, category filter menu */
+#cb-app .cb-chips-wide .cb-chip .cb-chip-icon {
+  width: 16px;
+  height: 16px;
+}
+
+#cb-app .cb-filter {
+  position: relative;
+  flex: none;
+}
+
+#cb-app .cb-btn.cb-filter-btn {
+  width: 71px;
+  min-height: 47px;
+  gap: 10px;
+  padding: 0;
+  font-size: 15px;
+}
+
+#cb-app .cb-filter-caret {
+  width: 10px;
+  height: 10px;
+}
+
+#cb-app .cb-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 25;
+  min-width: 280px;
+  max-width: min(80vw, 420px);
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 8px;
+  background: var(--cb-surface);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: cb-fade 0.14s ease;
+}
+
+#cb-app .cb-menu-item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cb-text);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+#cb-app .cb-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+#cb-app .cb-menu-item.is-active {
+  color: var(--cb-accent);
+  font-weight: 700;
+}
+
+#cb-app .cb-pager-select {
+  width: auto;
+  min-height: 36px;
+  padding: 0 34px 0 12px;
+}
+
+@media (max-width: 1023px) {
+  #cb-app .cb-brand { font-size: 23px; }
 }

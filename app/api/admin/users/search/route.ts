@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
     const users = await db.users.findMany({
       where: {
         OR: [
-          { name: { contains: query } },
-          { email: { contains: query } },
-          { username: { contains: query } },
+          { name: { contains: query, mode: 'insensitive' as const } },
+          { email: { contains: query, mode: 'insensitive' as const } },
+          { username: { contains: query, mode: 'insensitive' as const } },
           ...(isNaN(parseInt(query)) ? [] : [{ id: parseInt(query) }]),
         ],
       },

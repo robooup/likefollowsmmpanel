@@ -31,14 +31,14 @@ export async function GET(req: NextRequest) {
     if (search) {
       const searchTrimmed = search.trim();
       if (searchBy === 'api_provider') {
-        whereClause.serviceName = { contains: searchTrimmed };
+        whereClause.serviceName = { contains: searchTrimmed, mode: 'insensitive' as const };
       } else if (searchBy === 'service_name') {
-        whereClause.serviceName = { contains: searchTrimmed };
+        whereClause.serviceName = { contains: searchTrimmed, mode: 'insensitive' as const };
       } else {
         whereClause.OR = [
-          { serviceName: { contains: searchTrimmed } },
-          { action: { contains: searchTrimmed } },
-          { changes: { contains: searchTrimmed } }
+          { serviceName: { contains: searchTrimmed, mode: 'insensitive' as const } },
+          { action: { contains: searchTrimmed, mode: 'insensitive' as const } },
+          { changes: { contains: searchTrimmed, mode: 'insensitive' as const } }
         ];
       }
     }
@@ -54,11 +54,11 @@ export async function GET(req: NextRequest) {
       const searchTrimmed = search.trim();
       if (searchBy === 'api_provider') {
       } else if (searchBy === 'service_name') {
-        servicesWhereClause.name = { contains: searchTrimmed };
+        servicesWhereClause.name = { contains: searchTrimmed, mode: 'insensitive' as const };
       } else {
         servicesWhereClause.OR = [
-          { name: { contains: searchTrimmed } },
-          { description: { contains: searchTrimmed } },
+          { name: { contains: searchTrimmed, mode: 'insensitive' as const } },
+          { description: { contains: searchTrimmed, mode: 'insensitive' as const } },
         ];
       }
     }

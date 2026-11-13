@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
     
     if (search) {
       whereClause.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { excerpt: { contains: search, mode: 'insensitive' } },
-        { content: { contains: search, mode: 'insensitive' } }
+        { title: { contains: search, mode: 'insensitive' as const } },
+        { excerpt: { contains: search, mode: 'insensitive' as const } },
+        { content: { contains: search, mode: 'insensitive' as const } }
       ];
     }
 

@@ -186,10 +186,10 @@ class ContactDB {
       if (filters?.search && filters.search.trim()) {
         const term = filters.search.trim();
         where.OR = [
-          { subject: { contains: term, mode: 'insensitive' } },
-          { message: { contains: term, mode: 'insensitive' } },
-          { user: { username: { contains: term, mode: 'insensitive' } } },
-          { user: { email: { contains: term, mode: 'insensitive' } } },
+          { subject: { contains: term, mode: 'insensitive' as const } },
+          { message: { contains: term, mode: 'insensitive' as const } },
+          { user: { username: { contains: term, mode: 'insensitive' as const } } },
+          { user: { email: { contains: term, mode: 'insensitive' as const } } },
         ];
       }
 

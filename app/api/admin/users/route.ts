@@ -46,10 +46,10 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       whereClause.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-        { name: { contains: search, mode: 'insensitive' } },
-        { username: { contains: search, mode: 'insensitive' } },
-        { id: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { username: { contains: search, mode: 'insensitive' as const } },
+        { id: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 

@@ -85,20 +85,14 @@ export async function GET(request: Request) {
               : []
             ),
             {
-              name: {
-                contains: search,
-              },
+              name: { contains: search, mode: 'insensitive' as const },
             },
             {
-              description: {
-                contains: search,
-              },
+              description: { contains: search, mode: 'insensitive' as const },
             },
             {
               category: {
-                category_name: {
-                  contains: search,
-                },
+                category_name: { contains: search, mode: 'insensitive' as const },
               },
             },
           ].filter(Boolean),

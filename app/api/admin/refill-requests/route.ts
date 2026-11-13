@@ -68,9 +68,9 @@ export async function GET(req: NextRequest) {
     if (search) {
       whereClause.OR = [
         { orderId: { equals: parseInt(search) || 0 } },
-        { user: { name: { contains: search, mode: 'insensitive' } } },
-        { user: { email: { contains: search, mode: 'insensitive' } } },
-        { reason: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' as const } } },
+        { user: { email: { contains: search, mode: 'insensitive' as const } } },
+        { reason: { contains: search, mode: 'insensitive' as const } },
       ];
     }
 

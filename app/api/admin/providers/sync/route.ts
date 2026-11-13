@@ -120,7 +120,8 @@ export async function POST(req: NextRequest) {
         let existingServices = await db.services.findMany({
           where: {
             updateText: {
-              contains: `"providerId":${provider.id}`
+              contains: `"providerId":${provider.id}`,
+              mode: 'insensitive' as const,
             }
           }
         });
@@ -131,7 +132,8 @@ export async function POST(req: NextRequest) {
           const servicesByProviderName = await db.services.findMany({
             where: {
               updateText: {
-                contains: `"provider":"${provider.name}"`
+                contains: `"provider":"${provider.name}"`,
+                mode: 'insensitive' as const,
               }
             }
           });

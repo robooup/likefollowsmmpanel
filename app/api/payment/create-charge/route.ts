@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
 
         const existingByInvoice = await db.addFunds.findFirst({
           where: {
-            invoiceId: { contains: requestId || '' },
+            invoiceId: { contains: requestId || '', mode: 'insensitive' as const },
           },
         });
 

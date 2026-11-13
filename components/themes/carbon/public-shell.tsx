@@ -13,29 +13,9 @@ const LINKS = [
   { href: '/contact', label: 'Contact' },
 ];
 
-function useLogo(): string {
-  const [logo, setLogo] = useState('');
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/public/general-settings')
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        const settings = data?.generalSettings;
-        const value = String(settings?.siteDarkLogo || settings?.siteLogo || '').trim();
-        if (!cancelled && value) setLogo(value);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return logo;
-}
-
 /** Header and footer of the Carbon theme for visitors who are not signed in. */
 export default function CarbonPublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || '';
-  const logo = useLogo();
   const [open, setOpen] = useState(false);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -57,7 +37,7 @@ export default function CarbonPublicShell({ children }: { children: React.ReactN
     <div id="cb-app" className="cb-app cb-public">
       <header className="cb-topbar">
         <Link href="/" className="cb-brand">
-          {logo ? <img src={logo} alt="Logo" className="cb-brand-logo" /> : <AppName />}
+          <AppName />
         </Link>
         <nav className="cb-topbar-right cb-public-nav">{links}</nav>
         <button type="button" className="cb-burger cb-public-burger" aria-label="Menu" onClick={() => setOpen((v) => !v)}>

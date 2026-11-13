@@ -20,7 +20,7 @@ import { SessionProvider } from 'next-auth/react';
 import { AppNameProvider } from '@/contexts/app-name-context';
 import { CurrencyProvider } from '@/contexts/currency-context';
 import { getUserCurrency } from '@/lib/actions/currency';
-import { Heebo, Nunito } from 'next/font/google';
+import { Comfortaa, Heebo, Nunito } from 'next/font/google';
 import NextTopLoader from 'nextjs-toploader';
 import { Toaster } from 'sonner';
 import StoreProvider from '@/app/store-provider';
@@ -39,6 +39,14 @@ const nunito = Nunito({
 const carbonFont = Heebo({
   subsets: ['latin'],
   variable: '--font-carbon',
+  display: 'swap',
+});
+
+// Wordmark in the Carbon header (the panel name set in a rounded display face).
+const carbonBrandFont = Comfortaa({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-carbon-brand',
   display: 'swap',
 });
 
@@ -121,7 +129,7 @@ export default async function RootLayout({
         />
       </head>
       <body
-        className={`${nunito.variable} ${carbonFont.variable} font-nunito antialiased text-black`}
+        className={`${nunito.variable} ${carbonFont.variable} ${carbonBrandFont.variable} font-nunito antialiased text-black`}
         suppressHydrationWarning
       >
         <SessionProvider

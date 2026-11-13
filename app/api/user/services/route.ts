@@ -83,7 +83,7 @@ export async function GET(request: Request) {
           AND: [
             ...(provider && provider !== 'All' ? [{
               OR: [
-                { providerName: { contains: provider } },
+                { providerName: { contains: provider, mode: 'insensitive' as const } },
                 { providerId: provider === 'Self' ? null : parseInt(provider) || undefined }
               ]
             }] : []),
@@ -98,15 +98,11 @@ export async function GET(request: Request) {
                   : []
                 ),
                 {
-                  name: {
-                    contains: search,
-                  },
+                  name: { contains: search, mode: 'insensitive' as const },
                 },
                 {
                   category: {
-                    category_name: {
-                      contains: search,
-                    },
+                    category_name: { contains: search, mode: 'insensitive' as const },
                   },
                 },
               ].filter(Boolean),
@@ -144,12 +140,9 @@ export async function GET(request: Request) {
               category_name: true,
             }
           },
-          serviceType: {
-            select: {
-              id: true,
-              name: true,
-            }
-          },
+          // Services has no serviceType relation (only serviceTypeId); selecting it
+          // made Prisma reject the query, so every search returned nothing.
+          serviceTypeId: true,
         },
       };
       
@@ -194,7 +187,7 @@ export async function GET(request: Request) {
                   ]
                 } : {
                   OR: [
-                    { providerName: { contains: provider } },
+                    { providerName: { contains: provider, mode: 'insensitive' as const } },
                     { providerId: parseInt(provider) || undefined }
                   ]
                 })
@@ -273,7 +266,7 @@ export async function GET(request: Request) {
                   ]
                 } : {
                   OR: [
-                    { providerName: { contains: provider } },
+                    { providerName: { contains: provider, mode: 'insensitive' as const } },
                     { providerId: parseInt(provider) || undefined }
                   ]
                 })
@@ -380,7 +373,8 @@ export async function GET(request: Request) {
         page: 1,
         totalPages: 1,
         message: 'Error fetching services',
-        error: error instanceof Error ? error.message : 'Unknown error',
+        // The details stay in the server log; they include the query and schema.
+        error: 'Could not load services',
       },
       { status: 200 }
     );

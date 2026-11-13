@@ -38,19 +38,19 @@ export async function GET(request: NextRequest) {
         case 'username':
           where.username = {
             contains: search,
-            mode: 'insensitive'
+            mode: 'insensitive' as const
           };
           break;
         case 'details':
           where.details = {
             contains: search,
-            mode: 'insensitive'
+            mode: 'insensitive' as const
           };
           break;
         case 'ip_address':
           where.ipAddress = {
             contains: search,
-            mode: 'insensitive'
+            mode: 'insensitive' as const
           };
           break;
         case 'all':
@@ -59,25 +59,25 @@ export async function GET(request: NextRequest) {
             {
               username: {
                 contains: search,
-                mode: 'insensitive'
+                mode: 'insensitive' as const
               }
             },
             {
               details: {
                 contains: search,
-                mode: 'insensitive'
+                mode: 'insensitive' as const
               }
             },
             {
               ipAddress: {
                 contains: search,
-                mode: 'insensitive'
+                mode: 'insensitive' as const
               }
             },
             {
               action: {
                 contains: search,
-                mode: 'insensitive'
+                mode: 'insensitive' as const
               }
             }
           ];
