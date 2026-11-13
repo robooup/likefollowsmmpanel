@@ -74,49 +74,10 @@ export async function POST(req: NextRequest) {
       profitMargin = 20
     } = await req.json();
 
-    for (const [key, intervalId] of syncSchedules) {
-      clearInterval(intervalId);
-      syncSchedules.delete(key);
-    }
-
-    if (enablePriceSync) {
-      const priceInterval = setInterval(async () => {
-        try {
-          console.log('Running scheduled price sync...');
-          await performSync('prices', profitMargin);
-        } catch (error) {
-          console.error('Scheduled price sync failed:', error);
-        }
-      }, priceSyncInterval * 60 * 1000);
-
-      syncSchedules.set('prices', priceInterval);
-    }
-
-    if (enableServiceSync) {
-      const serviceInterval = setInterval(async () => {
-        try {
-          console.log('Running scheduled service sync...');
-          await performSync('new_services', profitMargin);
-        } catch (error) {
-          console.error('Scheduled service sync failed:', error);
-        }
-      }, serviceSyncInterval * 60 * 1000);
-
-      syncSchedules.set('services', serviceInterval);
-    }
-
-    if (enableStatusSync) {
-      const statusInterval = setInterval(async () => {
-        try {
-          console.log('Running scheduled status sync...');
-          await performSync('status', profitMargin);
-        } catch (error) {
-          console.error('Scheduled status sync failed:', error);
-        }
-      }, statusSyncInterval * 60 * 1000);
-
-      syncSchedules.set('status', statusInterval);
-    }
+    // Timers inside a web request do not survive restarts and would be shared
+    // by every panel on this server. Order status sync for all panels is run
+    // by the platform scheduler instead (see /api/saas/internal/cron).
+    void profitMargin;
 
     return NextResponse.json({
       success: true,

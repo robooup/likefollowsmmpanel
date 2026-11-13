@@ -24,7 +24,6 @@ export const publicRoutes = [
   '/api/public/analytics-settings',
   '/api/ticket-system-status',
   '/api/contact-system-status',
-  '/api/test-db',
   '/api/ref',
   '/api/v2',
   '/ref',

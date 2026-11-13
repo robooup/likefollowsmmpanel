@@ -1,3 +1,4 @@
+import { tenantCacheKey } from '@/lib/tenant/key';
 
 export interface Currency {
   id: number;
@@ -25,17 +26,30 @@ export interface CurrencySettings {
   thousandsSeparator: string;
   decimalSeparator: string;
 }
-let currencyCache: {
+type CurrencyCacheEntry = {
   currencies: Currency[];
   settings: CurrencySettings;
   lastFetch: number;
-} | null = null;
+};
+// Keyed per panel on the server (one process serves many panels).
+const currencyCaches = new Map<string, CurrencyCacheEntry>();
+function getCurrencyCache(): CurrencyCacheEntry | null {
+  const key = tenantCacheKey();
+  return key ? currencyCaches.get(key) ?? null : null;
+}
+function setCurrencyCache(entry: CurrencyCacheEntry | null): void {
+  const key = tenantCacheKey();
+  if (!key) return;
+  if (entry) currencyCaches.set(key, entry);
+  else currencyCaches.delete(key);
+}
 
 const CACHE_DURATION = 5 * 60 * 1000;
 export async function fetchCurrencyData(): Promise<{
   currencies: Currency[];
   settings: CurrencySettings;
 }> {
+  const currencyCache = getCurrencyCache();
   if (currencyCache && Date.now() - currencyCache.lastFetch < CACHE_DURATION) {
     return {
       currencies: currencyCache.currencies,
@@ -141,11 +155,11 @@ export async function fetchCurrencyData(): Promise<{
       thousandsSeparator: ',',
       decimalSeparator: '.',
     };
-    currencyCache = {
+    setCurrencyCache({
       currencies,
       settings,
       lastFetch: Date.now(),
-    };
+    });
 
     return { currencies, settings };
   } catch (error) {
@@ -167,11 +181,11 @@ export async function fetchCurrencyData(): Promise<{
       thousandsSeparator: ',',
       decimalSeparator: '.',
     };
-    currencyCache = {
+    setCurrencyCache({
       currencies: fallbackCurrencies,
       settings: fallbackSettings,
       lastFetch: Date.now(),
-    };
+    });
 
     return {
       currencies: fallbackCurrencies,
@@ -261,7 +275,7 @@ export function getCurrencyByCode(code: string, currencies: Currency[]): Currenc
   return currencies.find(c => c.code === code) || null;
 }
 export function clearCurrencyCache(): void {
-  currencyCache = null;
+  setCurrencyCache(null);
 }
 
 export function convertToUSD(

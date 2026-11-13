@@ -1,17 +1,22 @@
-import { db } from '@/lib/db';
+import { tenantCacheKey } from '@/lib/tenant/key';
+
+// Connections remember which panel they belong to; broadcasts never cross panels.
+const panelKey = () => tenantCacheKey() ?? 'none';
 
 const activeConnections = new Set<{
   send: (data: any) => void;
   userId: string;
+  panel: string;
 }>();
 
 const notificationConnections = new Set<{
   send: (data: any) => void;
   userId: string;
+  panel: string;
 }>();
 
 export function addRealtimeConnection(send: (data: any) => void, userId: string) {
-  const connection = { send, userId };
+  const connection = { send, userId, panel: panelKey() };
   activeConnections.add(connection);
   return () => {
     activeConnections.delete(connection);
@@ -37,8 +42,10 @@ export function broadcastOrderUpdate(orderId: number, orderData: any) {
 
   const orderUserId = orderData?.user?.id ? String(orderData.user.id) : null;
 
-  activeConnections.forEach(({ send, userId }) => {
+  const panel = panelKey();
+  activeConnections.forEach(({ send, userId, panel: connectionPanel }) => {
     try {
+      if (connectionPanel !== panel) return;
       if (orderUserId && userId !== 'admin' && userId !== orderUserId) {
         return;
       }
@@ -61,8 +68,10 @@ export function broadcastSyncProgress(progress: {
     timestamp: new Date().toISOString()
   };
 
-  activeConnections.forEach(({ send }) => {
+  const panel = panelKey();
+  activeConnections.forEach(({ send, panel: connectionPanel }) => {
     try {
+      if (connectionPanel !== panel) return;
       send(message);
     } catch (error) {
       console.error('Error broadcasting sync progress:', error);
@@ -75,7 +84,7 @@ export function getActiveConnectionsCount() {
 }
 
 export function addNotificationConnection(send: (data: any) => void, userId: string) {
-  const connection = { send, userId };
+  const connection = { send, userId, panel: panelKey() };
   notificationConnections.add(connection);
   return () => {
     notificationConnections.delete(connection);
@@ -103,9 +112,10 @@ export function broadcastNewNotification(userId: number, notification: {
   };
 
   const userIdStr = String(userId);
-  notificationConnections.forEach(({ send, userId }) => {
+  const panel = panelKey();
+  notificationConnections.forEach(({ send, userId, panel: connectionPanel }) => {
     try {
-      if (userId === userIdStr) {
+      if (connectionPanel === panel && userId === userIdStr) {
         send(message);
       }
     } catch (error) {

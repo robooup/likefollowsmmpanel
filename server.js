@@ -48,6 +48,8 @@ app.prepare().then(() => {
       delete req.headers['x-forwarded-for'];
       delete req.headers['x-real-ip'];
     }
+    // Set by our own request proxy only; never accept it from a client.
+    delete req.headers['x-client-ip'];
     const rawHost = String(req.headers['x-forwarded-host'] || req.headers.host || '')
       .split(',')[0]
       .trim()

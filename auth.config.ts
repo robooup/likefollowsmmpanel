@@ -9,16 +9,22 @@ import { getTwoFactorConfirmationByUserId } from './data/two-factor-confirmation
 import { getUserByEmail, getUserById, getUserByUsername } from './data/user';
 import { ActivityLogger } from './lib/activity-logger';
 import { db } from './lib/db';
+import { currentTenant } from './lib/tenant/current';
 import { signInSchema } from './lib/validators/auth.validator';
 import { processAffiliateReferral } from './lib/affiliate-referral-helper';
 
 export default {
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
-    }),
+    // One Google OAuth client cannot safely serve many independent panels, so
+    // it is only enabled when explicitly configured for the whole install.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
     Credentials({
       async authorize(credentials): Promise<any> {
         const validedFields = signInSchema.safeParse(credentials);
@@ -68,30 +74,12 @@ export default {
       if (!existingUser) return false;
 
       if (existingUser.status === 'banned') {
-        console.log(`Blocked login attempt for banned user: ${existingUser.email}`);
         return false;
       }
 
       if (existingUser.status === 'suspended') {
-        console.log(`Blocked login attempt for suspended user: ${existingUser.email}`);
         return false;
       }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      console.log(`Successful login: ${existingUser.email} (Role: ${existingUser.role})`);
 
       if (existingUser.isTwoFactorEnabled) {
         await db.twoFactorConfirmations.deleteMany({
@@ -150,7 +138,17 @@ export default {
       }
       return session;
     },
-    async jwt({ token, req, trigger }: any) {
+    async jwt({ token, req, trigger, user }: any) {
+      // Every panel shares this process and signing secret, so a session is
+      // bound to the panel it was issued for and is void anywhere else.
+      const tenant = await currentTenant();
+      if (!tenant) return null;
+      if (user) {
+        token.tid = tenant.id;
+      } else if (token.tid !== tenant.id) {
+        return null;
+      }
+
       if (!token.sub) return token;
 
       let impersonatedUserId: string | null = null;
@@ -200,36 +198,41 @@ export default {
       } catch (error) {
       }
 
+      // The impersonation cookies are plain, client-editable values, so they are
+      // only honoured when the signed token proves the caller is that admin:
+      // either the token still belongs to the admin (impersonation starting) or
+      // it already records that admin as the original one (impersonation running).
       if (impersonatedUserId && originalAdminId) {
-        console.log('JWT Callback - Impersonation detected, fetching users:', { 
-          impersonatedUserId, 
-          originalAdminId 
-        });
-        const impersonatedUser = await getUserById(parseInt(impersonatedUserId));
-        const originalAdmin = await getUserById(parseInt(originalAdminId));
-        if (impersonatedUser && originalAdmin) {
-          console.log('JWT Callback - Setting impersonated user token:', { 
-            role: impersonatedUser.role, 
-            id: impersonatedUser.id 
-          });
-          token.sub = impersonatedUser.id.toString();
-          token.role = impersonatedUser.role;
-          token.isTwoFactorEnabled = impersonatedUser.isTwoFactorEnabled;
-          token.currency = impersonatedUser.currency;
-          token.name = impersonatedUser.name;
-          token.username = impersonatedUser.username;
-          token.email = impersonatedUser.email;
-          token.balance = impersonatedUser.balance;
-          token.image = impersonatedUser.image;
-          token.isImpersonating = true;
-          token.originalAdminId = parseInt(originalAdminId);
-          token.originalAdminRole = originalAdmin.role;
-          return token;
-        } else {
-          console.log('JWT Callback - Users not found:', { 
-            impersonatedUser: !!impersonatedUser, 
-            originalAdmin: !!originalAdmin 
-          });
+        const adminId = parseInt(originalAdminId);
+        const targetId = parseInt(impersonatedUserId);
+        const callerId = token.originalAdminId != null ? Number(token.originalAdminId) : Number(token.sub);
+        let allowed = false;
+        if (!isNaN(adminId) && !isNaN(targetId) && callerId === adminId) {
+          const impersonatedUser = await getUserById(targetId);
+          const originalAdmin = await getUserById(adminId);
+          const adminIsStaff = originalAdmin?.role === 'admin' || originalAdmin?.role === 'moderator';
+          const targetIsStaff = impersonatedUser?.role === 'admin' || impersonatedUser?.role === 'moderator';
+          if (impersonatedUser && originalAdmin && adminIsStaff && !targetIsStaff && originalAdmin.status === 'active') {
+            allowed = true;
+            token.sub = impersonatedUser.id.toString();
+            token.role = impersonatedUser.role;
+            token.isTwoFactorEnabled = impersonatedUser.isTwoFactorEnabled;
+            token.currency = impersonatedUser.currency;
+            token.name = impersonatedUser.name;
+            token.username = impersonatedUser.username;
+            token.email = impersonatedUser.email;
+            token.balance = impersonatedUser.balance;
+            token.image = impersonatedUser.image;
+            token.permissions = null;
+            token.isImpersonating = true;
+            token.originalAdminId = adminId;
+            token.originalAdminRole = originalAdmin.role;
+            return token;
+          }
+        }
+        if (!allowed) {
+          impersonatedUserId = null;
+          originalAdminId = null;
         }
       }
 

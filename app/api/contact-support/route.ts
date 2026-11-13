@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             const bytes = await file.arrayBuffer();
             const buffer = Buffer.from(bytes);
 
-            const fileExtension = path.extname(file.name);
+            const fileExtension = path.extname(file.name).toLowerCase();
             const randomBytes = crypto.randomBytes(16).toString('hex');
             const timestamp = Date.now().toString();
             const hash = crypto.createHash('sha256').update(`${file.name}${timestamp}${randomBytes}`).digest('hex');

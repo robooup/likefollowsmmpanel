@@ -1,73 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
+import { NextResponse } from 'next/server';
+import { readFile } from 'fs/promises';
 import path from 'path';
+import { keyFromFileUrl, readTenantFile, SAFE_FILE_TYPES } from '@/lib/tenant/storage';
 
-export async function GET(request: NextRequest) {
+const NO_STORE = { 'Cache-Control': 'no-store, max-age=0' };
+
+function isSafeHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+export async function GET() {
   try {
     const { db } = await import('@/lib/db');
-    const settings = await db.generalSettings.findFirst({
-      select: {
-        siteIcon: true,
-      },
-    });
-
+    const settings = await db.generalSettings.findFirst({ select: { siteIcon: true } });
     const siteIcon = (settings?.siteIcon ?? '').trim();
+    if (siteIcon === '') return new NextResponse(null, { status: 404 });
 
-    if (siteIcon !== '') {
-      if (siteIcon.startsWith('http://') || siteIcon.startsWith('https://')) {
-        const res = NextResponse.redirect(siteIcon, 302);
-        res.headers.set('Cache-Control', 'no-store, max-age=0');
-        return res;
-      }
-
-      const iconPathRelative = siteIcon.startsWith('/')
-        ? siteIcon.substring(1)
-        : siteIcon;
-      const iconPath = path.join(process.cwd(), 'public', iconPathRelative);
-
-      try {
-        if (fs.existsSync(iconPath)) {
-          const fileBuffer = fs.readFileSync(iconPath);
-          const fileExtension = path.extname(siteIcon).toLowerCase();
-
-          let contentType = 'image/x-icon';
-          switch (fileExtension) {
-            case '.png':
-              contentType = 'image/png';
-              break;
-            case '.jpg':
-            case '.jpeg':
-              contentType = 'image/jpeg';
-              break;
-            case '.gif':
-              contentType = 'image/gif';
-              break;
-            case '.svg':
-              contentType = 'image/svg+xml';
-              break;
-            case '.ico':
-              contentType = 'image/x-icon';
-              break;
-            default:
-              contentType = 'image/png';
-          }
-
-          return new NextResponse(fileBuffer, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'no-store, max-age=0',
-            },
-          });
-        }
-      } catch (fileError) {
-        console.error(`Error reading favicon file at ${iconPath}:`, fileError);
-      }
-      return new NextResponse(null, { status: 404 });
+    // 1) A file uploaded to this panel's own storage.
+    const key = keyFromFileUrl(siteIcon);
+    if (key) {
+      const file = await readTenantFile(key).catch(() => null);
+      if (!file || !file.contentType.startsWith('image/')) return new NextResponse(null, { status: 404 });
+      return new NextResponse(new Uint8Array(file.body), {
+        headers: { 'Content-Type': file.contentType, 'X-Content-Type-Options': 'nosniff', ...NO_STORE },
+      });
     }
 
-    return new NextResponse(null, { status: 404 });
+    // 2) An external image URL.
+    if (/^https?:\/\//i.test(siteIcon)) {
+      if (!isSafeHttpUrl(siteIcon)) return new NextResponse(null, { status: 404 });
+      return NextResponse.redirect(siteIcon, { status: 302, headers: NO_STORE });
+    }
+
+    // 3) One of the stock images shipped in public/general — nothing else on disk.
+    const name = path.basename(siteIcon.replace(/\\/g, '/'));
+    const ext = path.extname(name).toLowerCase();
+    const type = SAFE_FILE_TYPES[ext];
+    if (!type || !type.startsWith('image/') || !/^[\w.-]+$/.test(name)) {
+      return new NextResponse(null, { status: 404 });
+    }
+    try {
+      const body = await readFile(path.join(process.cwd(), 'public', 'general', name));
+      return new NextResponse(new Uint8Array(body), { headers: { 'Content-Type': type, ...NO_STORE } });
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
   } catch (error) {
     console.error('Error serving favicon:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return new NextResponse(null, { status: 404 });
   }
 }

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     const avatarPath = 'avatars';
     const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
+    const extension = ({ 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/gif': 'gif' } as Record<string, string>)[file.type] || 'jpg';
     const filename = `avatar_${session.user.id}_${timestamp}.${extension}`;
 
     const bytes = await file.arrayBuffer();

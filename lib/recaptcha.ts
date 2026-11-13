@@ -1,4 +1,4 @@
-"use server";
+// Server-only helpers (not server actions: the settings include the secret key).
 
 interface ReCAPTCHAVerificationResponse {
   success: boolean;

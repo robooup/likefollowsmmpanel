@@ -1,7 +1,19 @@
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
-let syncLogs: any[] = [];
+import { tenantCacheKey } from '@/lib/tenant/key';
+
+// In-memory log, kept separately for each panel.
+const syncLogsByPanel = new Map<string, any[]>();
+function panelLogs(): any[] {
+  const key = tenantCacheKey() ?? 'none';
+  let logs = syncLogsByPanel.get(key);
+  if (!logs) {
+    logs = [];
+    syncLogsByPanel.set(key, logs);
+  }
+  return logs;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +30,7 @@ export async function GET(req: NextRequest) {
     const syncType = searchParams.get('syncType');
     const status = searchParams.get('status');
 
-    let filteredLogs = [...syncLogs];
+    let filteredLogs = [...panelLogs()];
 
     if (provider) {
       filteredLogs = filteredLogs.filter(log => 
@@ -91,9 +103,9 @@ export async function POST(req: NextRequest) {
       ...logEntry
     };
 
-    syncLogs.unshift(newLog);
-    if (syncLogs.length > 1000) {
-      syncLogs = syncLogs.slice(0, 1000);
+    panelLogs().unshift(newLog);
+    if (panelLogs().length > 1000) {
+      panelLogs().length = 1000;
     }
 
     return NextResponse.json({
@@ -119,8 +131,8 @@ export async function DELETE() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clearedCount = syncLogs.length;
-    syncLogs = [];
+    const clearedCount = panelLogs().length;
+    panelLogs().length = 0;
 
     return NextResponse.json({
       success: true,
@@ -146,9 +158,9 @@ async function addSyncLog(logData: any) {
       ...logData
     };
 
-    syncLogs.unshift(newLog);
-    if (syncLogs.length > 1000) {
-      syncLogs = syncLogs.slice(0, 1000);
+    panelLogs().unshift(newLog);
+    if (panelLogs().length > 1000) {
+      panelLogs().length = 1000;
     }
 
     return newLog;

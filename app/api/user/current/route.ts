@@ -1,52 +1,15 @@
 import { requireAuth } from '@/lib/auth-helpers';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth();
 
-    console.log(`User current API accessed by: ${session.user.email}`);
-
-    let impersonatedUserId: string | null = null;
-    let originalAdminId: string | null = null;
-    
-    try {
-      if (request.cookies) {
-        impersonatedUserId = request.cookies.get('impersonated-user-id')?.value || null;
-        originalAdminId = request.cookies.get('original-admin-id')?.value || null;
-      }
-      
-      if ((!impersonatedUserId || !originalAdminId)) {
-        const cookieStore = await cookies();
-        if (!impersonatedUserId) {
-          impersonatedUserId = cookieStore.get('impersonated-user-id')?.value || null;
-        }
-        if (!originalAdminId) {
-          originalAdminId = cookieStore.get('original-admin-id')?.value || null;
-        }
-      }
-      
-      console.log('User Current API - Cookie check:', { 
-        impersonatedUserId, 
-        originalAdminId,
-        sessionIsImpersonating: session.user.isImpersonating 
-      });
-    } catch (error) {
-      console.error('Error reading cookies in user current API:', error);
-    }
-
-    let userId: number;
-    let isImpersonating = session.user.isImpersonating || false;
-    
-    if (impersonatedUserId && originalAdminId) {
-      userId = parseInt(impersonatedUserId);
-      isImpersonating = true;
-      console.log('User Current API - Using impersonated user ID:', userId);
-    } else {
-      userId = Number(session.user.id);
-    }
+    // The session already resolves to the impersonated user when an admin is
+    // legitimately impersonating (see auth.config.ts); cookies are not trusted here.
+    const userId = Number(session.user.id);
+    const isImpersonating = session.user.isImpersonating || false;
 
     try {
       const userDetails = await db.users.findUnique({

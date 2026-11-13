@@ -1,9 +1,8 @@
 import { auth } from '@/auth';
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
-import { isR2Configured, ensureR2Path, uploadToR2 } from '@/lib/r2';
+import { cleanKey, SAFE_FILE_TYPES, saveTenantFile, StorageError } from '@/lib/tenant/storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,20 +23,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
+    const role = session.user.role;
+    const isStaff = role === 'admin' || role === 'moderator';
+    const isAdminUpload =
+      uploadType === 'admin_uploads' || uploadType === 'admin_media' || uploadType === 'general';
+    if (isAdminUpload && !isStaff) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     let allowedTypes: string[];
     let maxSize: number;
-    
+
     if (uploadType === 'uploads' || uploadType === 'support_ticket_uploads') {
-      allowedTypes = [
-        'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-        'application/pdf'
-      ];
+      allowedTypes = [...imageTypes, 'application/pdf'];
       maxSize = 3 * 1024 * 1024;
     } else if (uploadType === 'admin_uploads' || uploadType === 'admin_media') {
-      allowedTypes = [];
-      maxSize = 50 * 1024 * 1024;
+      allowedTypes = []; // any type on the storage allow-list (checked by extension below)
+      maxSize = 20 * 1024 * 1024;
     } else {
-      allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      allowedTypes = imageTypes;
       maxSize = 5 * 1024 * 1024;
     }
 
@@ -47,43 +52,30 @@ export async function POST(request: NextRequest) {
     } else if (uploadType === 'uploads' && data.get('uploadPath') === 'blog-img') {
       uploadSubDir = 'blog-img';
     } else if (uploadType === 'admin_uploads') {
-      const uploadPath = data.get('uploadPath') as string | null;
-      if (uploadPath !== undefined && uploadPath !== null && typeof uploadPath === 'string') {
-        const normalized = uploadPath.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-        if (!normalized.includes('..') && !path.isAbsolute(normalized)) {
-          const publicDir = path.resolve(process.cwd(), 'public');
-          const targetDir = normalized ? path.resolve(publicDir, normalized) : publicDir;
-          if (targetDir.startsWith(publicDir)) {
-            uploadSubDir = normalized;
-          }
+      const uploadPath = data.get('uploadPath');
+      if (typeof uploadPath === 'string' && uploadPath.trim() !== '') {
+        try {
+          uploadSubDir = cleanKey(uploadPath).join('/') || 'uploads';
+        } catch {
+          return NextResponse.json({ error: 'Invalid upload path' }, { status: 400 });
         }
       }
     }
 
-    if (uploadSubDir === '' && uploadType === 'admin_uploads') {
-      maxSize = 1 * 1024 * 1024;
-    }
-    if (uploadType === 'admin_media') {
-      maxSize = 50 * 1024 * 1024;
-    }
-
-    const useR2 = isR2Configured();
-    const uploadsDir = path.join(process.cwd(), 'public', uploadSubDir);
-    if (!useR2) {
-      try {
-        await mkdir(uploadsDir, { recursive: true });
-      } catch (error) {
-      }
-    }
-
-    if (useR2 && uploadSubDir) {
-      await ensureR2Path(uploadSubDir);
-    }
-
     const uploadedFiles = [];
-    
+
     for (const file of filesToProcess) {
-      if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
+      const fileExtension = path.extname(file.name).toLowerCase();
+      const storedType = SAFE_FILE_TYPES[fileExtension];
+      if (!storedType) {
+        return NextResponse.json(
+          { error: `File type of ${file.name} is not allowed.` },
+          { status: 400 }
+        );
+      }
+      // Trust the extension we will serve the file as, not the browser-declared type.
+      const effectiveType = storedType.split(';')[0];
+      if (allowedTypes.length > 0 && !allowedTypes.includes(effectiveType)) {
         return NextResponse.json(
           { error: `Invalid file type for ${file.name}. Only ${(uploadType === 'uploads') ? 'images and PDF files' : 'images'} are allowed.` },
           { status: 400 }
@@ -101,38 +93,27 @@ export async function POST(request: NextRequest) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
 
-      const fileExtension = path.extname(file.name);
       const randomBytes = crypto.randomBytes(16).toString('hex');
       const timestamp = Date.now().toString();
       const hash = crypto.createHash('sha256').update(`${file.name}${timestamp}${randomBytes}`).digest('hex');
       const encryptedFilename = `${hash.substring(0, 16)}${fileExtension}`;
 
       const useOriginalName = uploadSubDir === 'general';
-      const storedFilename = useOriginalName
-        ? (path.basename(file.name).replace(/\\/g, '/').trim() || encryptedFilename)
-        : encryptedFilename;
+      const originalBase = path
+        .basename(file.name.replace(/\\/g, '/'), path.extname(file.name))
+        .replace(/[^A-Za-z0-9._ ()-]/g, '-')
+        .replace(/^[^A-Za-z0-9]+/, '')
+        .slice(0, 80);
+      const storedFilename = useOriginalName && originalBase ? `${originalBase}${fileExtension}` : encryptedFilename;
 
-      let fileUrl: string;
-      if (useR2) {
-        const r2Key = uploadSubDir ? `${uploadSubDir}/${storedFilename}` : storedFilename;
-        const { url } = await uploadToR2({
-          key: r2Key,
-          body: buffer,
-          contentType: file.type || undefined,
-        });
-        fileUrl = url;
-      } else {
-        const filepath = path.join(uploadsDir, storedFilename);
-        await writeFile(filepath, buffer);
-        fileUrl = uploadSubDir ? `/${uploadSubDir}/${storedFilename}` : `/${storedFilename}`;
-      }
+      const { url: fileUrl } = await saveTenantFile(`${uploadSubDir}/${storedFilename}`, buffer);
 
       uploadedFiles.push({
         originalName: file.name,
         encryptedName: storedFilename,
         fileUrl,
         fileSize: file.size,
-        mimeType: file.type
+        mimeType: effectiveType
       });
     }
 
@@ -158,6 +139,9 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
+    if (error instanceof StorageError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Error uploading file:', error);
     const errorMessage =

@@ -57,13 +57,12 @@ const panelProxy = auth(async (req) => {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-client-ip', clientIP);
 
-  const isTestDbApi = nextUrl.pathname === '/api/test-db';
 
 
 
   const impersonatedUserId = req.cookies.get('impersonated-user-id')?.value;
   const originalAdminId = req.cookies.get('original-admin-id')?.value;
-  const isImpersonating = userRole?.isImpersonating || !!impersonatedUserId;
+  const isImpersonating = !!userRole?.isImpersonating;
 
   const callbackUrl =
     nextUrl.searchParams.get('callbackUrl') || DEFAULT_SIGN_IN_REDIRECT;
@@ -74,6 +73,24 @@ const panelProxy = auth(async (req) => {
   const isSignInPage = nextUrl.pathname === '/sign-in';
   const isAdminRoute = nextUrl.pathname.startsWith('/admin');
   
+  // Blanket guard: nothing under /api/admin may change data without a staff
+  // session, whatever the individual route handler forgot to check.
+  if (nextUrl.pathname.startsWith('/api/admin/') && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    const staffOpenWrites = [
+      '/api/admin/switch-back',
+      '/api/admin/services/catId-by-services', // read-only lookup used by the order form
+      '/api/admin/delete-image', // checks ownership itself
+    ];
+    const role = userRole?.role;
+    const isStaff = !isImpersonating && (role === 'admin' || role === 'moderator');
+    if (!isStaff && !staffOpenWrites.includes(nextUrl.pathname.replace(/\/$/, ''))) {
+      return NextResponse.json(
+        { success: false, error: isLoggedIn ? 'Forbidden' : 'Unauthorized' },
+        { status: isLoggedIn ? 403 : 401 }
+      );
+    }
+  }
+
   if (isApiRoute || isPaymentWebhook || isApiAuthRoute) {
     return NextResponse.next({
       request: {

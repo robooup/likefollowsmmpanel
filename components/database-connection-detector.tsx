@@ -11,14 +11,14 @@ export default function DatabaseConnectionDetector({ children }: { children: Rea
 
   const checkDatabaseConnection = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch('/api/test-db', {
+      const response = await fetch('/api/health', {
         method: 'GET',
         cache: 'no-cache',
         signal: AbortSignal.timeout(5000),
       });
 
       const data = await response.json();
-      return data.success === true;
+      return data.status === 'ok';
     } catch (error) {
 
       logger.warn('Database connection check failed', error);

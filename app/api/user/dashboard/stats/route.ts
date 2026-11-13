@@ -1,35 +1,14 @@
 import { requireAuth } from '@/lib/auth-helpers';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAuth();
 
-    let userId: number = typeof session.user.id === 'string' 
-      ? parseInt(session.user.id) 
+    const userId: number = typeof session.user.id === 'string'
+      ? parseInt(session.user.id)
       : session.user.id;
-    
-    try {
-      let impersonatedUserId: string | null = null;
-      
-      if (request.cookies) {
-        impersonatedUserId = request.cookies.get('impersonated-user-id')?.value || null;
-      }
-      
-      if (!impersonatedUserId) {
-        const cookieStore = await cookies();
-        impersonatedUserId = cookieStore.get('impersonated-user-id')?.value || null;
-      }
-      
-      if (impersonatedUserId) {
-        userId = parseInt(impersonatedUserId);
-        console.log('Dashboard Stats API - Using impersonated user ID:', userId);
-      }
-    } catch (error) {
-      console.error('Error reading cookies in dashboard stats API:', error);
-    }
 
     const user = await db.users.findUnique({
       where: { id: userId },
