@@ -1729,3 +1729,151 @@ html[data-user-theme='carbon'] body {
   #cb-app .cb-main .cb-content { padding-top: 14px; }
   #cb-app .cb-order { margin-top: 0; }
 }
+
+/* ---------- Pages without their own Carbon layout ----------
+   They keep their markup but follow the same frame as the Carbon pages: one
+   centred 1110px column of flat cards, plain titles, solid buttons. */
+
+#cb-app .cb-main .page-container {
+  max-width: 1110px;
+  margin: 0 auto;
+  padding: 0;
+}
+
+#cb-app .cb-main .page-content {
+  padding: 0;
+}
+
+#cb-app .cb-main .page-content .grid[class*='lg:grid-cols-2'],
+#cb-app .cb-main .page-content .grid[class*='md:grid-cols-2'][class*='gap-6'],
+#cb-app .cb-main .page-content .grid[class*='lg:grid-cols-3'] {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+#cb-app .cb-main .page-content [class*='lg:col-span-'] {
+  grid-column: auto !important;
+}
+
+#cb-app .cb-main .page-content [class*='space-y-6'] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 16px !important;
+}
+
+#cb-app .cb-content .card {
+  padding: 24px !important;
+  border-radius: 8px !important;
+  background-color: var(--cb-surface) !important;
+  box-shadow: 0 2px 4px rgba(30, 29, 31, 0.05) !important;
+}
+
+#cb-app .cb-content .card .card,
+#cb-app .cb-content .card [class*='rounded-lg'][class*='border'] {
+  box-shadow: none !important;
+}
+
+#cb-app .cb-content .card-header {
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+}
+
+#cb-app .cb-content .card-icon {
+  display: none;
+}
+
+#cb-app .cb-content .card-title {
+  color: var(--cb-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+#cb-app .cb-content .form-label,
+#cb-app .cb-content label {
+  color: var(--cb-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#cb-app .cb-content .page-container input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+#cb-app .cb-content .page-container select,
+#cb-app .cb-content .page-container textarea {
+  min-height: 48px;
+  border: 1px solid transparent !important;
+  border-radius: 8px !important;
+  background-color: var(--cb-surface-2) !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#cb-app .cb-content .page-container input:focus,
+#cb-app .cb-content .page-container select:focus,
+#cb-app .cb-content .page-container textarea:focus {
+  border-color: var(--cb-accent) !important;
+  box-shadow: 0 0 0 1px var(--cb-accent) !important;
+}
+
+#cb-app .cb-content .btn,
+#cb-app .cb-content button[class*='bg-gradient-to-r'],
+#cb-app .cb-content a[class*='bg-gradient-to-r'] {
+  min-height: 45px;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#cb-app .cb-content .btn-primary,
+#cb-app .cb-content button[class*='from-[var(--primary)]'],
+#cb-app .cb-content a[class*='from-[var(--primary)]'] {
+  background-color: var(--cb-accent) !important;
+  color: #fff !important;
+}
+
+#cb-app .cb-content .btn-primary:hover:not(:disabled),
+#cb-app .cb-content button[class*='from-[var(--primary)]']:hover:not(:disabled) {
+  background-color: var(--cb-accent-hover) !important;
+}
+
+#cb-app .cb-content .btn-secondary {
+  background-color: var(--cb-surface-2) !important;
+  color: var(--cb-text) !important;
+}
+
+#cb-app .cb-content [class*='rounded-full'][class*='px-4'][class*='py-2'] {
+  border-radius: 8px !important;
+}
+
+/* Pages whose root is not .page-container (affiliate, child panel, ...) get the same column. */
+#cb-app .cb-main .cb-content > .min-h-screen,
+#cb-app .cb-main .cb-content > div > .min-h-screen {
+  max-width: 1110px;
+  min-height: 0 !important;
+  margin: 0 auto;
+  background: transparent !important;
+}
+
+/* Hard-coded dark panels and tinted info boxes become plain Carbon surfaces. */
+#cb-app .cb-content [class*='dark:bg-[#'],
+#cb-app .cb-content [class*='dark:bg-blue-9'],
+#cb-app .cb-content [class*='dark:bg-green-9'],
+#cb-app .cb-content [class*='dark:bg-purple-9'],
+#cb-app .cb-content [class*='dark:bg-yellow-9'],
+#cb-app .cb-content [class*='dark:bg-indigo-9'],
+#cb-app .cb-content [class*='dark:from-'] {
+  background-color: var(--cb-surface-2) !important;
+  background-image: none !important;
+}
+
+#cb-app .cb-content [class*='dark:border-blue-'],
+#cb-app .cb-content [class*='dark:border-green-'],
+#cb-app .cb-content [class*='dark:border-purple-'],
+#cb-app .cb-content [class*='dark:border-indigo-'] {
+  border-color: var(--cb-border) !important;
+}
+
+#cb-app .cb-toolbar + .cb-table-card {
+  margin-top: 12px;
+}
