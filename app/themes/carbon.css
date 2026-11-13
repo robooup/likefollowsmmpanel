@@ -2168,3 +2168,81 @@ html[data-user-theme='carbon'] body {
 #cb-app .cb-main [data-page='api'] .page-content [class*='space-y-6'] > .card:not([hidden]) ~ .card:not([hidden]) {
   margin-top: 0 !important;
 }
+
+/* ---------- Affiliates, Child panel ----------
+   Reference: stacked 1110px tables starting 32px under the header, 40px rows,
+   16px side padding on the outer cells, 16px between tables. */
+#cb-app .cb-affiliate,
+#cb-app .cb-child-panel {
+  padding-top: 2px;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-info thead th,
+#cb-app .cb-content table.cb-table.cb-table-info tbody td {
+  height: 40px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-info tbody tr:hover {
+  background: transparent !important;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-info tbody td {
+  border-top: 0 !important;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-info tbody tr + tr td {
+  border-top: 1px solid var(--cb-bg) !important;
+}
+
+#cb-app .cb-content table.cb-table.cb-table-info thead th:last-child,
+#cb-app .cb-content table.cb-table.cb-table-info tbody td:last-child {
+  padding-right: 16px;
+}
+
+#cb-app .cb-ref-link {
+  vertical-align: middle;
+}
+
+#cb-app .cb-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent !important;
+  color: var(--cb-accent) !important;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+#cb-app .cb-copy svg {
+  width: 13px;
+  height: 13px;
+}
+
+#cb-app .cb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#cb-app .cb-ns {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  #cb-app .cb-content table.cb-table.cb-table-info thead th,
+  #cb-app .cb-content table.cb-table.cb-table-info tbody td {
+    white-space: normal;
+  }
+}
+
+#cb-app .cb-child-panel {
+  padding-top: 0;
+}

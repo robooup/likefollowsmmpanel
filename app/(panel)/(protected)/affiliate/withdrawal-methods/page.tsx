@@ -138,7 +138,7 @@ export default function ActivateAffiliatePage() {
   const [errors, setErrors] = useState<{ withdrawalMethods?: string }>({});
 
   useEffect(() => {
-    setPageTitle('Activate Affiliate Account', appName);
+    setPageTitle('Withdrawal Methods', appName);
   }, [appName]);
 
   useEffect(() => {
@@ -157,9 +157,6 @@ export default function ActivateAffiliatePage() {
           if (status === 'inactive') {
             router.replace('/affiliate');
             return;
-          }
-          if (status === 'active') {
-            setIsActivated(true);
           }
         }
       } catch (error) {

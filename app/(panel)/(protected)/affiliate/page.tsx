@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { logger } from '@/lib/utils/logger';
 import { RequestWithdrawalModal } from '@/components/dashboard/affiliate/request-withdrawal';
+import { useUserTheme } from '@/contexts/user-theme-context';
+import CarbonAffiliate from '@/components/themes/carbon/affiliate';
 import {
   FaChartLine,
   FaCheckCircle,
@@ -64,7 +66,7 @@ const Toast = ({
   </div>
 );
 
-export default function AffiliateProgram() {
+function DefaultAffiliateProgram() {
   const { appName } = useAppNameWithFallback();
   const [isActive, setIsActive] = useState<boolean>(true);
 
@@ -94,6 +96,11 @@ export default function AffiliateProgram() {
       </div>
     </div>
   );
+}
+
+export default function AffiliateProgram() {
+  const userTheme = useUserTheme();
+  return userTheme === 'carbon' ? <CarbonAffiliate /> : <DefaultAffiliateProgram />;
 }
 
 interface AffiliateStats {
