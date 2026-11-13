@@ -301,7 +301,7 @@ axios.post(url, payload)
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container" data-page="api">
         {toastMessage && (
         <Toast
           message={toastMessage.message}

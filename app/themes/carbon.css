@@ -2065,3 +2065,106 @@ html[data-user-theme='carbon'] body {
 @media (max-width: 1023px) {
   #cb-app .cb-brand { font-size: 23px; }
 }
+
+/* ---------- Account ---------- */
+
+#cb-app span.cb-tab {
+  cursor: default;
+}
+
+#cb-app .cb-inline {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+#cb-app .cb-inline > .cb-input,
+#cb-app .cb-inline > .cb-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+#cb-app .cb-inline > .cb-input.cb-input-short {
+  flex: 0 0 140px;
+}
+
+#cb-app .cb-btn.cb-btn-auto {
+  width: auto;
+  flex: none;
+  min-height: 45px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+#cb-app .cb-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#cb-app .cb-badge.is-ok {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+#cb-app .cb-badge.is-warn {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+@media (max-width: 640px) {
+  #cb-app .cb-inline { flex-wrap: wrap; }
+  #cb-app .cb-inline > .cb-input,
+  #cb-app .cb-inline > .cb-grow { flex-basis: 100%; }
+  #cb-app .cb-inline > .cb-input.cb-input-short { flex: 1 1 100%; }
+  #cb-app .cb-btn.cb-btn-auto { flex: 1; }
+}
+
+/* ---------- API documentation ----------
+   One continuous card with section headings. The key itself is managed on
+   the Account page, so the key card and the help card are not shown here. */
+
+#cb-app [data-page='api'] .space-y-6 > .card {
+  margin-top: 0 !important;
+  padding: 8px 24px 20px !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+#cb-app [data-page='api'] .space-y-6 > .card:first-child,
+#cb-app [data-page='api'] .space-y-6 > .card:last-child {
+  display: none;
+}
+
+#cb-app [data-page='api'] .space-y-6 > .card:nth-child(2) {
+  padding-top: 24px !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+#cb-app [data-page='api'] .space-y-6 > .card:nth-last-child(2) {
+  padding-bottom: 24px !important;
+  border-radius: 0 0 8px 8px !important;
+}
+
+#cb-app [data-page='api'] .card-title {
+  font-size: 21px;
+  font-weight: 700;
+}
+
+#cb-app [data-page='api'] .space-y-6 > .card:nth-child(2) .card-title {
+  font-size: 31.5px;
+  line-height: 1.2;
+}
+
+#cb-app [data-page='api'] pre,
+#cb-app [data-page='api'] code {
+  background: var(--cb-surface-2) !important;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+/* The generic "stacked cards" spacing has a more specific selector; match it here. */
+#cb-app .cb-main [data-page='api'] .page-content [class*='space-y-6'] > .card:not([hidden]) ~ .card:not([hidden]) {
+  margin-top: 0 !important;
+}
