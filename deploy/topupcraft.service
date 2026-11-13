@@ -1,0 +1,26 @@
+[Unit]
+Description=TopupCraft (Next.js)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=topupcraft
+Group=topupcraft
+WorkingDirectory=/opt/topupcraft/app
+EnvironmentFile=/opt/topupcraft/app/.env
+Environment=NODE_ENV=production
+Environment=HOSTNAME_BIND=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/topupcraft/app/.next /var/lib/topupcraft
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

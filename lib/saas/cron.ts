@@ -1,3 +1,4 @@
+import { runWithTenant } from '@/lib/tenant/context';
 import { invalidateTenantRouting, platformDb } from '@/lib/tenant/registry';
 import { audit } from './audit';
 import { getSaasSettings } from './settings';
@@ -48,4 +49,50 @@ export async function runMaintenance(): Promise<Record<string, number>> {
   }
 
   return { expired: lapsed.length, releasedDomains: staleDomains.count, abandonedOrders: abandoned.length };
+}
+
+let syncCursor = 0;
+let syncRunning = false;
+
+/**
+ * Refreshes order statuses from the providers for every active panel, a few
+ * panels per run within a time budget. The next run continues where this one
+ * stopped, so all panels get their turn.
+ */
+export async function runOrderSync(budgetMs = 4 * 60_000): Promise<Record<string, number>> {
+  if (syncRunning) return { skipped: 1 };
+  syncRunning = true;
+  const started = Date.now();
+  let panelsDone = 0;
+  let ordersSynced = 0;
+  let failures = 0;
+  try {
+    const { runProviderSync } = await import('@/lib/utils/provider-sync');
+    const panels = await platformDb().saasPanel.findMany({
+      where: { status: 'active', dbName: { not: null } },
+      orderBy: { id: 'asc' },
+      select: { id: true, domains: { where: { isPrimary: true, status: 'active' }, select: { host: true }, take: 1 } },
+    });
+    const ordered = [...panels.filter((p) => p.id > syncCursor), ...panels.filter((p) => p.id <= syncCursor)];
+    for (const panel of ordered) {
+      if (Date.now() - started > budgetMs) break;
+      const origin = panel.domains[0] ? `https://${panel.domains[0].host}` : undefined;
+      try {
+        const result = await runWithTenant(
+          panel.id,
+          () => runProviderSync({ syncAll: true, action: 'cron_sync', broadcast: false }),
+          { origin }
+        );
+        ordersSynced += result.syncedCount || 0;
+      } catch (error) {
+        failures += 1;
+        console.error(`Order sync failed for panel ${panel.id}:`, error instanceof Error ? error.message : error);
+      }
+      syncCursor = panel.id;
+      panelsDone += 1;
+    }
+  } finally {
+    syncRunning = false;
+  }
+  return { panels: panelsDone, ordersSynced, failures };
 }

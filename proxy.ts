@@ -504,7 +504,8 @@ export default async function proxy(req: NextRequest, event: NextFetchEvent) {
 
   // Loopback: only Caddy's on-demand-TLS check and the cron runner live here.
   if (isInternalHost(host) && !isPlatformHost(host)) {
-    return isUnder(pathname, `${SAAS_API_PREFIX}/internal`) ? NextResponse.next() : notFound(isApi);
+    const direct = req.headers.get('x-tc-direct') === '1'; // set by server.js, cannot be forged
+    return direct && isUnder(pathname, `${SAAS_API_PREFIX}/internal`) ? NextResponse.next() : notFound(isApi);
   }
 
   if (isPlatformHost(host)) return platformProxy(req, internalOrigin);

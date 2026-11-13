@@ -1,152 +1,124 @@
-# Like Follow SMM Panel
+# TopupCraft
 
-**Your Social Media Growth Partner** - an SMM (Social Media Marketing) panel for buying and managing social media services (likes, followers, views, etc.) across multiple platforms.
+Hosted SMM panel platform. Customers come to **topupcraft.com**, order a panel, pay, and get their own
+SMM panel on a free subdomain or their own domain. They manage everything from a customer portal; you
+manage the whole platform from a super admin.
 
----
+## How it fits together
 
-## Overview
+| Part | Where | What it does |
+|------|-------|--------------|
+| TopupCraft site | `topupcraft.com` | Landing, pricing, sign-up, customer portal (`/portal`), super admin (`/admin`) |
+| Customer panels | `name.topupcraft.com` or the customer's own domain | The full SMM panel: services, providers, orders, payments, tickets, API |
+| Platform database | `tc_platform` | Customers, plans, panels, domains, invoices |
+| Panel databases | `tc_panel_<id>` | One private database per panel, cloned from `tc_panel_template` |
 
-Like Follow SMM Panel is a full‑stack SMM panel that lets users order social media services, manage funds, use an API, run child panels, and participate in an affiliate program. Admins can manage orders, services, users, providers, payments, and site settings. The app supports user and admin dashboards, support tickets, announcements, blogs, and configurable payment gateways.
+One Next.js process serves everything. The request's domain decides which panel (and therefore which
+database) a request belongs to — see `server.js`, `proxy.ts`, `lib/db.ts` and `lib/tenant/`.
+The platform code lives in `lib/saas/`, `app/(platform)/saas/` and `app/api/saas/`; the panel itself
+is under `app/(panel)/` and `app/api/`.
 
----
+### Order flow
 
-## Project Stack
+1. Customer registers, picks a plan, a panel name, a subdomain and an admin login.
+2. An invoice is created; they pay through UddoktaPay.
+3. When the gateway confirms the payment, the panel database is created, the admin account is added and
+   the subdomain goes live — automatically.
+4. From the portal they can add their own domain (DNS record → Verify → SSL is issued automatically),
+   change the primary domain, change the subdomain, and renew or change plan.
+5. A panel that is not renewed goes offline after the grace period and comes back when renewed.
 
-| Layer | Technologies |
-|-------|--------------|
-| **Framework** | Next.js 16 (App Router), React 19 |
-| **Language** | TypeScript 5.8 |
-| **Database** | PostgreSQL, Prisma ORM |
-| **Auth** | NextAuth.js (credentials, OAuth) |
-| **UI** | Tailwind CSS, Radix UI, Framer Motion, Lucide / React Icons |
-| **State** | Redux Toolkit, SWR |
-| **Forms & Validation** | React Hook Form, Zod |
-| **Email** | Nodemailer |
-| **Testing** | Vitest, Testing Library, Playwright |
+## Deploying to a server (Ubuntu 22.04 / 24.04)
 
----
+You need: the server, the domain on Cloudflare, and a Cloudflare API token with **Zone → DNS → Edit**
+for the domain (used to get the wildcard SSL certificate).
 
-## Features
+1. In Cloudflare DNS add three records pointing to the server IP, all **DNS only** (grey cloud):
+   `A @`, `A www`, `A *`.
+2. On the server:
 
-### User
+   ```bash
+   sudo mkdir -p /opt/topupcraft && sudo git clone <your repo url> /opt/topupcraft/app
+   ```
 
-- **Dashboard** — overview and stats  
-- **Orders** — New order, Mass orders, My orders  
-- **Services** — All services, Favorites, Service updates  
-- **Funds** — Add funds, Transfer funds, Transactions  
-- **Support** — Support tickets, Tickets history, Contact support  
-- **API** — API integration for automation  
-- **Child Panel** — Reseller / sub-panels  
-- **Affiliate** — Affiliate program, Withdrawals  
-- **Help** — FAQs, Terms  
-- **Account** — Account settings  
+   ```bash
+   sudo bash /opt/topupcraft/app/deploy/setup-server.sh
+   ```
 
-### Admin
+   The script installs Node.js, PostgreSQL and Caddy, creates the databases and a `.env` with random
+   secrets, builds the app, and sets up the service, HTTPS, scheduled jobs, daily backups and firewall.
+   Ports 80 and 443 must be free.
+3. Create your super admin login:
 
-- **Dashboard** — admin overview and metrics  
-- **Orders** — All orders, Refill requests, Cancel requests  
-- **Services** — All services, Import, Bulk modify, Update price, API sync logs  
-- **Users** — Users, Admins, Moderators, User activity logs  
-- **Transactions** — All transactions  
-- **Support** — Support tickets, Contact messages (Human ticket)  
-- **Content** — Blogs, Announcements  
-- **Affiliates** — Affiliate users, Withdrawals  
-- **Analytics** — Analytics & reports  
-- **Child Panels** — Child panel management  
-- **Settings** — General, Appearance, Providers, Payment gateway, Payment currency, Notifications, Email, Integrations, Custom codes  
+   ```bash
+   cd /opt/topupcraft/app && sudo -u topupcraft -H env HOME=/opt/topupcraft npm run saas:create-admin -- you@example.com "Your Name"
+   ```
 
----
+4. Sign in at `https://topupcraft.com/login`, open **Super admin → Settings** and add your UddoktaPay
+   API URL and key. In UddoktaPay set the webhook URL to `https://topupcraft.com/api/saas/payment/webhook`.
+5. Review the three default plans under **Super admin → Plans**.
 
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** 18+  
-- **npm**  
-- **PostgreSQL** (for `DATABASE_URL`)  
-
-### 1. Clone and install
+Updating later:
 
 ```bash
-git clone <repo-url>
-cd likefollowsmmpanel
+sudo bash /opt/topupcraft/app/deploy/update.sh
+```
+
+Moving to a bigger server: copy `/opt/topupcraft/app/.env`, restore the latest folder from
+`/var/backups/topupcraft` (database dumps + `storage.tar.gz`), run the setup script, switch DNS.
+
+## Local development
+
+```bash
 npm install
 ```
 
-### 2. Environment variables
-
-Copy `.env.example` to `.env` and fill in your values. At minimum:
-
-```env
-DATABASE_URL="postgresql://user:password@host:5432/database"
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-```
-
-Use `NEXT_PUBLIC_API_URL` if your API base URL differs. Other vars (e.g. `ADMIN_EMAIL`, payment, email, reCAPTCHA) are optional but needed for those features.
-
-### 3. Database setup
+Create a PostgreSQL role that can create databases, then two empty databases `tc_platform` and
+`tc_panel_template`, copy `.env.example` to `.env` and fill it in (use
+`PLATFORM_ROOT_DOMAIN="topupcraft.localhost"`), then:
 
 ```bash
-npx prisma generate
-npx prisma migrate deploy
+npm run saas:migrate && npm run db:seed
 ```
-
-Optional seed:
 
 ```bash
-npm run db:seed
+SAAS_ADMIN_PASSWORD='choose-a-password' npm run saas:create-admin -- admin@example.com "Admin"
 ```
-
-### 4. Create the first admin
-
-**Requirement:** There must be **no existing admin** in the database. If any admin exists, the script exits and does not create another.
-
-Run the following before creating the admin:
-
-```bash
-npx prisma generate
-npx prisma db push
-npm run create-admin
-```
-
-This creates an admin with:
-
-- **Username:** `likefollowsmmpanel_admin`  
-- **Password:** `suitableit`  
-- **Name:** `Like Follow SMM Panel Admin`  
-- **Email:** `admin@likefollowsmmpanel.com`  
-
-Change the password after first login. If you see *"Failed to create admin because some or 1 admin is already exist."*, an admin already exists; use that account or manage admins from the admin panel.
-
-### 5. Run the app
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Use the admin credentials above to sign in at the admin sign‑in page.
+Open `http://topupcraft.localhost:3000`. Panels are served on `http://<name>.topupcraft.localhost:3000`.
+Without a payment gateway configured, mark invoices as paid from **Super admin → Panels → (panel)**.
 
-### Other commands
+## Security model (read before changing things)
 
-```bash
-npm run build     # Production build
-npm run start     # Production server
-npm run lint      # Lint
-npm run test      # Run tests
-```
+Panel admins are customers, so panel code is treated as untrusted with respect to the server:
 
----
+- **Data**: `db` has no default database. Every query is routed by the request's domain to that panel's
+  own database; a call without a panel context fails.
+- **Sessions**: a panel login is bound to the panel it was issued for and is rejected on any other panel.
+  The TopupCraft login uses a separate cookie that panel subdomains cannot overwrite.
+- **Files**: uploads go to a private per-panel folder (`STORAGE_DIR/panels/<id>`), only allow-listed file
+  types, served through `/api/files/...` with script execution disabled.
+- **Outbound requests**: provider / gateway URLs chosen by panel admins cannot reach private or
+  loopback addresses (`lib/security/ssrf-guard.ts`).
+- **Internal endpoints** (`/api/saas/internal/*`): only reachable from the server itself; the scheduler
+  additionally needs `CRON_SECRET`.
+- **Admin APIs**: every write under `/api/admin/*` requires a staff session, enforced centrally in `proxy.ts`.
 
-## Provider Order Sync & Fresh Data
+When adding panel code: never read or write the filesystem directly, never cache panel data in a
+module-level variable without `createTenantCache` (`lib/tenant/key.ts`), and never build URLs from
+environment variables — use `baseUrlSync()` (`lib/tenant/url.ts`).
 
-- **TanStack Query** is used for admin orders, homepage stats, and providers. Data refetches when you return to the page or refocus the window.
-- **Provider sync**: Triggered when an admin opens the orders page; or call **POST /api/admin/provider-sync** (admin auth) to sync manually.
-- **Average time**: On Admin → Services, use the **Recalculate avg time** button (TanStack Query mutation calling **POST /api/admin/services/recalculate-average-time**).
+## Known limits of this first version
 
----
-
-## Conclusions
-
-Like Follow SMM Panel is a feature‑rich SMM panel with separate user and admin experiences, API and child‑panel support, and configurable payments and notifications. The stack (Next.js, Prisma, NextAuth, Tailwind) is chosen for maintainability and scalability. Use the create‑admin script only when no admin exists; afterward, manage users and roles from the admin panel.
+- TopupCraft account emails are not verified and there is no "forgot password" for the TopupCraft login yet
+  (the platform has no mail server configured). Panel logins have their own reset flow.
+- Custom domains are verified by checking that the domain points to this server. A DNS TXT ownership
+  check would be stronger and can be added.
+- Panels on free subdomains share the parent domain `topupcraft.com`; registering it on the Public Suffix
+  List (or using a separate domain for panel subdomains) is recommended as the platform grows.
+- Google sign-in inside panels is disabled (one Google OAuth app cannot safely serve many panels).
+- Pricing is a fixed monthly price per plan; order-count tiers are not implemented.

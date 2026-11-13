@@ -1,0 +1,49 @@
+# TopupCraft reverse proxy. Rendered to /etc/caddy/Caddyfile by setup-server.sh.
+{
+	email __ACME_EMAIL__
+	on_demand_tls {
+		# A certificate is only issued for domains that belong to a panel.
+		ask http://127.0.0.1:__PORT__/api/saas/internal/caddy-ask
+	}
+}
+
+(app) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	reverse_proxy 127.0.0.1:__PORT__
+}
+
+# The TopupCraft site and every free panel subdomain: one wildcard certificate
+# obtained through Cloudflare DNS.
+__DOMAIN__, *.__DOMAIN__ {
+	tls {
+		dns cloudflare {env.CF_API_TOKEN}
+	}
+	import app
+}
+
+# Customers' own domains: certificate issued on first visit, after the check above.
+https:// {
+	tls {
+		on_demand
+	}
+	@local host localhost 127.0.0.1
+	respond @local 404
+	import app
+}
+
+# Plain HTTP: answer the domain-verification probe directly, redirect the rest.
+http:// {
+	@probe path /.well-known/tc-domain-check
+	handle @probe {
+		reverse_proxy 127.0.0.1:__PORT__
+	}
+	handle {
+		redir https://{host}{uri} 308
+	}
+}

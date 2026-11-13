@@ -28,3 +28,5 @@ next-env.d.ts
 
 # environment variables
 .env
+# uploaded panel files (local development)
+/storage

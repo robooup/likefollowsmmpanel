@@ -53,6 +53,13 @@ app.prepare().then(() => {
     }
     // Set by our own request proxy only; never accept it from a client.
     delete req.headers['x-client-ip'];
+    // "Direct" = a process on this machine called us without going through the
+    // reverse proxy (Caddy's certificate check, the cron runner). Only such
+    // requests may use the internal endpoints, whatever Host they claim.
+    delete req.headers['x-tc-direct'];
+    if (isLoopback(req.socket.remoteAddress) && !req.headers['x-forwarded-for'] && !req.headers['x-forwarded-host']) {
+      req.headers['x-tc-direct'] = '1';
+    }
     const rawHost = String(req.headers['x-forwarded-host'] || req.headers.host || '')
       .split(',')[0]
       .trim()

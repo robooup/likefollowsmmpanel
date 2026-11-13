@@ -64,9 +64,9 @@ export function normalizeHost(raw: string | null | undefined): string {
 export function runWithTenant<T>(
   tenantId: number,
   fn: () => Promise<T>,
-  opts: { allowInactive?: boolean } = {}
+  opts: { allowInactive?: boolean; origin?: string } = {}
 ): Promise<T> {
-  return tenancy.als.run({ tenantId, allowInactive: opts.allowInactive }, fn);
+  return tenancy.als.run({ tenantId, allowInactive: opts.allowInactive, origin: opts.origin }, fn);
 }
 
 /** Run `fn` as if it was a request for `host`. */
