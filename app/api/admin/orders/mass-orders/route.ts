@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
         CASE 
           WHEN COUNT(CASE WHEN o.status = 'completed' THEN 1 END) = COUNT(o.id) THEN 'completed'
           WHEN COUNT(CASE WHEN o.status = 'failed' OR o.status = 'cancelled' THEN 1 END) > 0 THEN 'failed'
-          WHEN COUNT(CASE WHEN o.status = 'processing' THEN 1 END) > 0 THEN 'processing'
+          WHEN COUNT(CASE WHEN o.status IN ('processing', 'in_progress') THEN 1 END) > 0 THEN 'processing'
           ELSE 'pending'
         END
       ) = ${sanitizedStatus}`;
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
         CASE 
           WHEN COUNT(CASE WHEN o.status = 'completed' THEN 1 END) = COUNT(o.id) THEN 'completed'
           WHEN COUNT(CASE WHEN o.status = 'failed' OR o.status = 'cancelled' THEN 1 END) > 0 THEN 'failed'
-          WHEN COUNT(CASE WHEN o.status = 'processing' THEN 1 END) > 0 THEN 'processing'
+          WHEN COUNT(CASE WHEN o.status IN ('processing', 'in_progress') THEN 1 END) > 0 THEN 'processing'
           ELSE 'pending'
         END as status
       FROM "neworder" o
@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
           CASE 
             WHEN COUNT(CASE WHEN status = 'completed' THEN 1 END) = COUNT(id) THEN 'completed'
             WHEN COUNT(CASE WHEN status = 'failed' OR status = 'cancelled' THEN 1 END) > 0 THEN 'failed'
-            WHEN COUNT(CASE WHEN status = 'processing' THEN 1 END) > 0 THEN 'processing'
+            WHEN COUNT(CASE WHEN status IN ('processing', 'in_progress') THEN 1 END) > 0 THEN 'processing'
             ELSE 'pending'
           END as status
         FROM "neworder"

@@ -220,8 +220,8 @@ export async function POST(req: NextRequest) {
         const normalizedStatus = providerStatus.toLowerCase().trim().replace(/\s+/g, '_');
         const statusMap: { [key: string]: string } = {
           'pending': 'pending',
-          'in_progress': 'processing',
-          'inprogress': 'processing',
+          'in_progress': 'in_progress',
+          'inprogress': 'in_progress',
           'processing': 'processing',
           'completed': 'completed',
           'complete': 'completed',

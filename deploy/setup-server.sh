@@ -145,7 +145,7 @@ CRON
 chmod 700 /usr/local/bin/topupcraft-cron
 cat > /etc/cron.d/topupcraft <<CRON
 */5 * * * * root /usr/local/bin/topupcraft-cron
-*/10 * * * * root /usr/local/bin/topupcraft-cron orders
+*/2 * * * * root /usr/local/bin/topupcraft-cron orders
 30 3 * * * root bash $APP/deploy/backup.sh >/var/log/topupcraft-backup.log 2>&1
 CRON
 

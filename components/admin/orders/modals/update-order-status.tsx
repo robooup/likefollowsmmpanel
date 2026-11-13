@@ -49,7 +49,7 @@ const UpdateOrderStatusModal: React.FC<UpdateOrderStatusModalProps> = ({
     availableStatuses = ['cancelled', 'completed'];
     showAllOptions = false;
   } else {
-    const canCancel = ['pending', 'completed', 'processing', 'partial', 'fail', 'cancelled'].includes(normalizedStatus);
+    const canCancel = ['pending', 'completed', 'processing', 'in_progress', 'inprogress', 'partial', 'fail', 'cancelled'].includes(normalizedStatus);
     const canComplete = ['pending', 'inprogress', 'in_progress', 'processing'].includes(normalizedStatus);
     const canInProgress = ['pending', 'processing'].includes(normalizedStatus);
     

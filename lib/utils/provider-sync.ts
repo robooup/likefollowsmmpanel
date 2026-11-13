@@ -11,6 +11,7 @@ import { broadcastOrderUpdate, broadcastSyncProgress } from '@/lib/utils/realtim
 
 const MAX_SYNC_TIME_MS = 25000;
 const MAX_ORDERS_TO_SYNC = 100;
+export const ACTIVE_ORDER_STATUSES = ['pending', 'processing', 'in_progress'];
 
 export type ProviderSyncOptions = {
   orderIds?: number[];
@@ -287,7 +288,8 @@ type OrderWithService = Awaited<ReturnType<typeof db.newOrders.findMany>>[number
 
 async function fetchOrdersToSync(
   where: any,
-  includeProviderId = false
+  includeProviderId = false,
+  activeOnly = false
 ) {
   return db.newOrders.findMany({
     where,
@@ -301,14 +303,17 @@ async function fetchOrdersToSync(
         }
       }
     },
+    ...(activeOnly && { orderBy: { lastSyncAt: { sort: 'asc' as const, nulls: 'first' as const } } }),
     take: 200
   }) as Promise<OrderWithService[]>;
 }
 
 async function fetchOrdersForSyncAll(providerId?: number | string) {
+  // Finished orders never change again, so only the running ones are checked.
   const whereClause = {
     AND: [
       { providerOrderId: { not: null } },
+      { status: { in: ACTIVE_ORDER_STATUSES } },
       {
         service: {
           providerId: { not: null },
@@ -324,7 +329,7 @@ async function fetchOrdersForSyncAll(providerId?: number | string) {
     });
   }
 
-  return fetchOrdersToSync(whereClause, true);
+  return fetchOrdersToSync(whereClause, true, true);
 }
 
 async function fetchOrdersByIds(orderIds: number[]) {
@@ -583,8 +588,8 @@ function mapProviderStatus(providerStatus: string): string {
 
   const statusMap: Record<string, string> = {
     pending: 'pending',
-    in_progress: 'processing',
-    inprogress: 'processing',
+    in_progress: 'in_progress',
+    inprogress: 'in_progress',
     processing: 'processing',
     completed: 'completed',
     complete: 'completed',

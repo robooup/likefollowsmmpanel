@@ -489,7 +489,7 @@ export class ProviderOrderForwarder {
   private mapProviderStatus(providerStatus: string): string {
     const statusMap: { [key: string]: string } = {
       'Pending': 'pending',
-      'In progress': 'processing',
+      'In progress': 'in_progress',
       'Processing': 'processing',
       'Completed': 'completed',
       'Partial': 'partial',

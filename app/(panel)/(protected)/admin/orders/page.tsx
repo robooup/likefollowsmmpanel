@@ -865,7 +865,7 @@ const AdminOrdersPage = () => {
       const processedStats = {
         totalOrders: data.overview?.totalOrders || pagination.total,
         pendingOrders: statusBreakdown.pending || 0,
-        processingOrders: statusBreakdown.processing || 0,
+        processingOrders: (statusBreakdown.processing || 0) + (statusBreakdown.in_progress || 0),
         completedOrders: statusBreakdown.completed || 0,
         totalRevenue: data.overview?.totalRevenue || 0,
         todayOrders: data.dailyTrends?.[0]?.orders || 0,

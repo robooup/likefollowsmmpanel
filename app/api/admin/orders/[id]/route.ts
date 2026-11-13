@@ -218,7 +218,7 @@ export async function PUT(
       const user = currentOrder.user;
       const orderPrice = user.currency === 'USD' ? currentOrder.usdPrice : currentOrder.usdPrice * (user.dollarRate || 121.52);
       
-      if (currentOrder.status === 'pending' && ['processing', 'completed'].includes(body.status)) {
+      if (currentOrder.status === 'pending' && ['processing', 'in_progress', 'completed'].includes(body.status)) {
         if (user.balance < orderPrice) {
           return NextResponse.json(
             {
@@ -243,7 +243,7 @@ export async function PUT(
         });
       }
       
-      if (['processing', 'completed'].includes(currentOrder.status) && ['cancelled', 'refunded'].includes(body.status)) {
+      if (['processing', 'in_progress', 'completed'].includes(currentOrder.status) && ['cancelled', 'refunded'].includes(body.status)) {
         await db.users.update({
           where: { id: user.id },
           data: {

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
 import { ApiRequestBuilder, ApiResponseParser, createApiSpecFromProvider } from '@/lib/provider-api-specification';
 import { broadcastOrderUpdate } from '@/lib/utils/realtime-sync';
+import { ACTIVE_ORDER_STATUSES } from '@/lib/utils/provider-sync';
 
 const MAX_SYNC_TIME_MS = 30000;
 
@@ -28,8 +29,11 @@ export async function POST(req: NextRequest) {
     let orders = [];
 
     if (syncAll) {
+      // Only this user's orders that are still running.
       const whereClause: any = {
         AND: [
+          { userId: Number(session.user.id) },
+          { status: { in: ACTIVE_ORDER_STATUSES } },
           { providerOrderId: { not: null } },
           {
             service: {
@@ -64,6 +68,7 @@ export async function POST(req: NextRequest) {
               }
             }
           },
+          orderBy: { lastSyncAt: { sort: 'asc', nulls: 'first' } },
           take: 200
         });
 
@@ -483,8 +488,8 @@ function mapProviderStatus(providerStatus: string): string {
 
   const statusMap: { [key: string]: string } = {
     'pending': 'pending',
-    'in_progress': 'processing',
-    'inprogress': 'processing',
+    'in_progress': 'in_progress',
+    'inprogress': 'in_progress',
     'processing': 'processing',
     'completed': 'completed',
     'complete': 'completed',

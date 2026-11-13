@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
           { status: 'completed' },
           { status: 'partial' },
           { status: 'processing' },
+          { status: 'in_progress' },
           { status: 'pending' },
         ]
       },

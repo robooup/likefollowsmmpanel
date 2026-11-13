@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const whereClause: any = {};
     
     if (status && status !== 'all') {
-      whereClause.status = status;
+      whereClause.status = status === 'processing' ? { in: ['processing', 'in_progress'] } : status;
     }
     
     if (userId) {

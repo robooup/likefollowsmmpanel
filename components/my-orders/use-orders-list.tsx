@@ -254,6 +254,33 @@ export function useOrdersList() {
     };
   }, [refetch]);
 
+  // While the page is open and some order is still running, re-check the provider every 20 seconds.
+  const hasRunningOrder = (data?.data || []).some((order: any) =>
+    ['pending', 'processing', 'in_progress'].includes(order?.status)
+  );
+  useEffect(() => {
+    if (!hasRunningOrder) return;
+    let busy = false;
+    const timer = setInterval(async () => {
+      if (busy || document.visibilityState !== 'visible') return;
+      busy = true;
+      try {
+        const res = await fetch('/api/user/orders/sync-provider', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ syncAll: true }),
+        });
+        const json = await res.json().catch(() => null);
+        if (json?.success && (json.data?.synced || 0) > 0) refetch();
+      } catch {
+        // The next tick tries again.
+      } finally {
+        busy = false;
+      }
+    }, 20000);
+    return () => clearInterval(timer);
+  }, [hasRunningOrder, refetch]);
+
   useEffect(() => {
     if (hasSyncedRef.current) return;
 

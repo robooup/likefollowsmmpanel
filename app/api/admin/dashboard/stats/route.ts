@@ -71,7 +71,7 @@ export async function GET() {
       db.services.count(),
       db.categories.count(),
       db.newOrders.aggregate({
-        where: { status: { in: ['completed', 'processing'] } },
+        where: { status: { in: ['completed', 'processing', 'in_progress'] } },
         _sum: { usdPrice: true }
       }),
       db.newOrders.findMany({
@@ -83,7 +83,7 @@ export async function GET() {
         }
       }),
       db.newOrders.count({ where: { status: 'pending' } }),
-      db.newOrders.count({ where: { status: 'processing' } }),
+      db.newOrders.count({ where: { status: { in: ['processing', 'in_progress'] } } }),
       db.newOrders.count({ where: { status: 'completed' } }),
       db.newOrders.count({ where: { status: 'cancelled' } }),
       db.newOrders.count({ where: { status: 'partial' } }),
@@ -93,7 +93,7 @@ export async function GET() {
       db.newOrders.aggregate({
         where: {
           createdAt: { gte: todayStart, lte: todayEnd },
-          status: { in: ['completed', 'processing'] }
+          status: { in: ['completed', 'processing', 'in_progress'] }
         },
         _sum: { profit: true }
       }),
@@ -116,7 +116,7 @@ export async function GET() {
       db.newOrders.aggregate({
         where: {
           createdAt: { gte: thirtyDaysAgo },
-          status: { in: ['completed', 'processing'] }
+          status: { in: ['completed', 'processing', 'in_progress'] }
         },
         _sum: { usdPrice: true }
       })

@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const processingOrders = Number(await db.newOrders.count({
       where: { 
         userId: userId,
-        status: 'processing' 
+        status: { in: ['processing', 'in_progress'] }
       }
     }));
     

@@ -171,14 +171,14 @@ export default function UserDashboard() {
                               className={
                                 displayStatus === 'pending'
                                   ? 'bg-yellow-500 dark:bg-yellow-600 dark:shadow-lg dark:shadow-yellow-500/30'
-                                  : displayStatus === 'processing'
+                                  : displayStatus === 'processing' || displayStatus === 'in_progress'
                                   ? 'bg-blue-500 dark:bg-blue-600 dark:shadow-lg dark:shadow-blue-500/30'
                                   : displayStatus === 'completed'
                                   ? 'bg-green-500 dark:bg-green-600 dark:shadow-lg dark:shadow-green-500/30'
                                   : 'bg-red-500 dark:bg-red-600 dark:shadow-lg dark:shadow-red-500/30'
                               }
                             >
-                              {displayStatus}
+                              {displayStatus === 'in_progress' ? 'in progress' : displayStatus}
                             </Badge>
                           );
                         })()}
