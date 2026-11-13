@@ -2246,3 +2246,57 @@ html[data-user-theme='carbon'] body {
 #cb-app .cb-child-panel {
   padding-top: 0;
 }
+
+/* ---------- Notifications ----------
+   Same card as the default theme (see globals.css), in Carbon colours:
+   top-right over the header, outline icon, message, close button. */
+#cb-app .cb-toast {
+  top: 12px;
+  right: 16px;
+  z-index: 9999;
+  align-items: flex-start;
+  gap: 12px;
+  width: 384px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #1e1d1f;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  animation: toast-slide-in 0.3s ease-out both;
+}
+
+#cb-app .cb-toast > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+#cb-app .cb-toast button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  background: transparent !important;
+  color: #9ca3af !important;
+}
+
+#cb-app .cb-toast button svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 640px) {
+  #cb-app .cb-toast {
+    top: 10px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+}

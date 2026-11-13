@@ -173,7 +173,7 @@ export function useMassOrder() {
     type: 'success' | 'error' | 'info' | 'pending' = 'success'
   ) => {
     setToastMessage({ message, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   const formatCurrency = (amount: number) => {

@@ -320,7 +320,7 @@ const UserSupportTicketPage = ({ params }: { params: Promise<{ id: string }> }) 
     type: 'success' | 'error' | 'info' | 'pending' = 'success'
   ) => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 2000);
   };
 
   const handleReplySubmit = async () => {

@@ -147,7 +147,7 @@ export default async function RootLayout({
               enableSystem={false}
               disableTransitionOnChange={false}
             >
-              <Toaster richColors position="bottom-right" />
+              <Toaster richColors closeButton position="top-right" duration={2000} />
               <ServiceWorkerRegistration />
               <SettingsInvalidationListener />
               <CustomCodesInjector />

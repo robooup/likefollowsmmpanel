@@ -158,7 +158,7 @@ export default function TransactionsPage() {
     }
     lastToastRef.current = { message, type, at: now };
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), 2000);
   };
 
   const showPaymentSuccessToast = (sandbox: boolean) => {

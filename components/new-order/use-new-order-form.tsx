@@ -148,7 +148,7 @@ export function useNewOrderForm() {
       ? message 
       : (message?.message || message?.error || JSON.stringify(message) || 'An error occurred');
     setToastMessage({ message: messageString, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   const handleServiceTypeFieldChange = (field: string, value: any) => {

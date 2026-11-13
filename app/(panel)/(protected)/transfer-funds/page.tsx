@@ -190,7 +190,7 @@ export default function TransferFund() {
     type: 'success' | 'error' | 'info' | 'pending' = 'success'
   ) => {
     setToastMessage({ message, type });
-    setTimeout(() => setToastMessage(null), 4000);
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
   const handleTransfer = async (e: React.FormEvent) => {

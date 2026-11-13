@@ -1912,3 +1912,159 @@ body {
     transform: translateX(8px) !important;
   }
 }
+/* ---------- Notifications (Filament style) ----------
+   One look for every toast: a compact card pinned to the top-right corner over
+   the header, coloured outline icon, message, close button. Slides in from the right. */
+.toast-container {
+  top: 1rem !important;
+  right: 1rem !important;
+  left: auto !important;
+  z-index: 9999 !important;
+  gap: 0.75rem;
+}
+
+.toast,
+.toast.toast-success,
+.toast.toast-error,
+.toast.toast-danger,
+.toast.toast-pending,
+.toast.toast-warning,
+.toast.toast-info {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 24rem;
+  min-width: 0;
+  max-width: calc(100vw - 2rem);
+  padding: 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  color: #030712;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.5rem;
+  box-shadow: 0 0 0 1px rgba(3, 7, 18, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  backdrop-filter: none;
+  pointer-events: auto;
+  animation: toast-slide-in 0.3s ease-out both;
+}
+
+.toast-container .toast {
+  position: static;
+}
+
+.dark .toast,
+.dark .toast.toast-success,
+.dark .toast.toast-error,
+.dark .toast.toast-danger,
+.dark .toast.toast-pending,
+.dark .toast.toast-warning,
+.dark .toast.toast-info {
+  background-color: #18181b;
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.4),
+    0 4px 6px -4px rgba(0, 0, 0, 0.4);
+}
+
+.toast > div:only-child {
+  display: contents;
+}
+
+.toast span,
+.dark .toast span {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit !important;
+  word-break: break-word;
+}
+
+/* The page markup only carries an icon for some types; draw one for all of them. */
+.toast .toast-icon,
+.toast > svg:first-child,
+.toast > div:only-child > svg:first-child {
+  display: none;
+}
+
+.toast::before,
+#cb-app .cb-toast::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #22c55e;
+  -webkit-mask: var(--toast-glyph) center / contain no-repeat;
+  mask: var(--toast-glyph) center / contain no-repeat;
+  --toast-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'/%3E%3C/svg%3E");
+}
+
+.toast.toast-error::before,
+.toast.toast-danger::before,
+#cb-app .cb-toast.is-error::before {
+  background-color: #ef4444;
+  --toast-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'/%3E%3C/svg%3E");
+}
+
+.toast.toast-pending::before,
+.toast.toast-warning::before,
+#cb-app .cb-toast.is-pending::before,
+#cb-app .cb-toast.is-warning::before {
+  background-color: #f59e0b;
+  --toast-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z'/%3E%3C/svg%3E");
+}
+
+.toast.toast-info::before,
+#cb-app .cb-toast.is-info::before {
+  background-color: #3b82f6;
+  --toast-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='black'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z'/%3E%3C/svg%3E");
+}
+
+.toast button,
+.dark .toast button {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+  padding: 0.125rem;
+  border: 0 !important;
+  background: transparent !important;
+  color: #9ca3af !important;
+  box-shadow: none !important;
+  line-height: 0;
+}
+
+.toast button:hover {
+  color: #6b7280 !important;
+  opacity: 1;
+}
+
+.toast button svg,
+.toast .toast-close-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: inherit !important;
+}
+
+@media (max-width: 640px) {
+  .toast-container {
+    top: 0.75rem !important;
+    right: 0.75rem !important;
+    left: 0.75rem !important;
+  }
+
+  .toast {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    left: 0.75rem;
+    max-width: none;
+    animation-name: toast-slide-in;
+  }
+
+  .toast-container .toast {
+    width: 100%;
+  }
+}
